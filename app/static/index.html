@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Zelda_PS</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1>Zelda_PS</h1>
+    <p class="tagline">照片 · 旷野之息风格 UI 叠加</p>
+  </header>
+
+  <main>
+    <label id="dropzone" class="dropzone" for="file-input">
+      <input id="file-input" type="file" accept="image/*,.heic,.heif" hidden>
+      <div class="dropzone-inner">
+        <div class="dropzone-icon">▲</div>
+        <div class="dropzone-title">拖入照片，或点击选择</div>
+        <div class="dropzone-hint">支持 JPEG / PNG / HEIC，最大 60MB</div>
+      </div>
+    </label>
+
+    <p id="status" class="status" hidden></p>
+
+    <section id="workspace" class="workspace" hidden>
+      <div class="stage-wrap">
+        <div id="stage" class="stage">
+          <img id="photo" alt="上传的照片">
+          <!-- 后续步骤的小地图 / 标题 / 状态栏 / 心心都挂进这一层 -->
+          <div id="overlay" class="overlay"></div>
+        </div>
+      </div>
+
+      <section class="panel">
+        <div class="panel-head">
+          <h2>地点与时间</h2>
+          <span id="ctx-source" class="badge"></span>
+        </div>
+        <p class="panel-hint">小地图、地名和天气都依据这里的值生成，可以随时改。</p>
+
+        <div class="fields">
+          <label class="field">
+            <span>纬度</span>
+            <input id="in-lat" type="number" step="any" min="-90" max="90" placeholder="35.6586">
+          </label>
+          <label class="field">
+            <span>经度</span>
+            <input id="in-lon" type="number" step="any" min="-180" max="180" placeholder="139.7454">
+          </label>
+          <label class="field field-wide">
+            <span>拍摄时间</span>
+            <input id="in-time" type="datetime-local" step="1">
+          </label>
+        </div>
+
+        <div class="search-row">
+          <input id="q" type="search" placeholder="或直接搜地名，例如「稻城亚丁」">
+          <button id="q-go" class="btn btn-sm" type="button">搜索</button>
+        </div>
+        <ul id="q-results" class="results" hidden></ul>
+
+        <div class="fields fields-name">
+          <label class="field field-wide">
+            <span>地名</span>
+            <input id="in-name" type="text" placeholder="填了坐标后自动解析">
+          </label>
+        </div>
+        <div id="name-chips" class="chips"></div>
+
+        <p id="ctx-note" class="ctx-note"></p>
+      </section>
+
+      <section class="panel" id="map-panel" hidden>
+        <div class="panel-head">
+          <h2>小地图</h2>
+          <label class="toggle">
+            <input id="map-on" type="checkbox" checked>
+            <span>显示</span>
+          </label>
+        </div>
+        <p class="panel-hint">在照片上直接拖动小地图可以改位置。</p>
+
+        <div class="sliders">
+          <label class="slider">
+            <span>大小 <b id="v-size">22%</b></span>
+            <input id="s-size" type="range" min="8" max="45" value="22">
+          </label>
+          <label class="slider">
+            <span>范围 <b id="v-zoom">z15</b></span>
+            <input id="s-zoom" type="range" min="9" max="18" value="15">
+          </label>
+          <label class="slider">
+            <span>色阶 <b id="v-post">4</b></span>
+            <input id="s-post" type="range" min="2" max="8" value="4">
+          </label>
+        </div>
+
+        <p id="map-status" class="ctx-note"></p>
+      </section>
+
+      <details class="raw">
+        <summary>照片信息</summary>
+        <dl id="meta" class="meta"></dl>
+      </details>
+
+      <button id="reset" class="btn" type="button">换一张</button>
+    </section>
+  </main>
+
+  <script type="module" src="/app.js"></script>
+</body>
+</html>

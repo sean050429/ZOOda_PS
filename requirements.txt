@@ -1,0 +1,13 @@
+# Web 服务
+fastapi==0.141.1
+uvicorn[standard]==0.52.4
+python-multipart==0.0.32
+
+# 图像处理
+pillow==12.3.0
+pillow-heif==1.5.0      # iPhone .heic 支持
+piexif==1.1.3           # EXIF GPS / 拍摄时间读取
+
+# 外部 API + 配置
+httpx==0.28.1
+python-dotenv==1.2.3
