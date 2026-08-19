@@ -6,3 +6,9 @@ uploads/
 cache/
 output/
 .DS_Store
+
+# 本地素材，不要进仓库：
+#   test/      真实测试照片，EXIF 里带精确 GPS 和拍摄时间，属于个人行程数据
+#   ui_source/ 游戏截图，仅作风格参考，是任天堂的版权素材
+test/
+ui_source/
