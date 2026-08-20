@@ -80,24 +80,77 @@
             <span>显示</span>
           </label>
         </div>
-        <p class="panel-hint">在照片上直接拖动小地图可以改位置。</p>
+        <p class="panel-hint">位置和大小跟随下面的 HUD 布局，观感在这里调。</p>
 
         <div class="sliders">
-          <label class="slider">
-            <span>大小 <b id="v-size">22%</b></span>
-            <input id="s-size" type="range" min="8" max="45" value="22">
-          </label>
           <label class="slider">
             <span>范围 <b id="v-zoom">z15</b></span>
             <input id="s-zoom" type="range" min="9" max="18" value="15">
           </label>
           <label class="slider">
-            <span>色阶 <b id="v-post">4</b></span>
-            <input id="s-post" type="range" min="2" max="8" value="4">
+            <span>色阶 <b id="v-post">关</b></span>
+            <input id="s-post" type="range" min="0" max="8" value="0">
+          </label>
+        </div>
+
+        <div class="sliders">
+          <label class="slider">
+            <span>箭头朝向 <b id="v-heading">0°</b></span>
+            <input id="s-heading" type="range" min="0" max="355" step="5" value="0">
+          </label>
+          <label class="slider">
+            <span>箭头大小 <b id="v-marker">100%</b></span>
+            <input id="s-marker" type="range" min="60" max="320" step="10" value="100">
+          </label>
+          <label class="slider">
+            <span>配色</span>
+            <select id="sel-palette" class="select"></select>
           </label>
         </div>
 
         <p id="map-status" class="ctx-note"></p>
+      </section>
+
+      <section class="panel" id="hud-panel" hidden>
+        <div class="panel-head">
+          <h2>整套 HUD</h2>
+          <label class="toggle">
+            <input id="hud-on" type="checkbox" checked>
+            <span>显示</span>
+          </label>
+        </div>
+        <p class="panel-hint">
+          按游戏原作的布局摆放：血条在左上，希卡圆盘、时间天气、小地图在右下。
+          天气目前用文字占位。
+        </p>
+
+        <div class="sliders">
+          <label class="slider">
+            <span>整体大小 <b id="v-hud-scale">100%</b></span>
+            <input id="s-hud-scale" type="range" min="40" max="200" value="100">
+          </label>
+          <label class="slider">
+            <span>心心总数 <b id="v-hearts">12</b></span>
+            <input id="s-hearts" type="range" min="3" max="30" value="12">
+          </label>
+          <label class="slider">
+            <span>剩余心心 <b id="v-hearts-full">11</b></span>
+            <input id="s-hearts-full" type="range" min="0" max="30" value="11">
+          </label>
+        </div>
+
+        <div class="fields fields-name">
+          <label class="field">
+            <span>天气文字（占位）</span>
+            <input id="in-weather" type="text" value="晴 26°C">
+          </label>
+          <label class="field">
+            <span>时间</span>
+            <input id="in-clock" type="text" value="13:35">
+          </label>
+        </div>
+
+        <p id="hud-status" class="ctx-note"></p>
       </section>
 
       <details class="raw">

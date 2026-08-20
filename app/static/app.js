@@ -1,4 +1,5 @@
-import { mapState, refresh as refreshMap, onMapStatus } from '/minimap.js';
+import { mapState, refresh as refreshMap, onMapStatus, drawMarker } from '/minimap.js';
+import { hudState, loadLayout, renderHud, minimapSlot } from '/hud.js';
 
 const dropzone = document.getElementById('dropzone');
 const fileInput = document.getElementById('file-input');
@@ -20,15 +21,30 @@ const qInput = document.getElementById('q');
 const qGo = document.getElementById('q-go');
 const qResults = document.getElementById('q-results');
 
+const hudPanel = document.getElementById('hud-panel');
+const hudOn = document.getElementById('hud-on');
+const hudStatus = document.getElementById('hud-status');
+const sHudScale = document.getElementById('s-hud-scale');
+const sHearts = document.getElementById('s-hearts');
+const sHeartsFull = document.getElementById('s-hearts-full');
+const vHudScale = document.getElementById('v-hud-scale');
+const vHearts = document.getElementById('v-hearts');
+const vHeartsFull = document.getElementById('v-hearts-full');
+const inWeather = document.getElementById('in-weather');
+const inClock = document.getElementById('in-clock');
+
 const mapPanel = document.getElementById('map-panel');
 const mapOn = document.getElementById('map-on');
 const mapStatus = document.getElementById('map-status');
-const sSize = document.getElementById('s-size');
 const sZoom = document.getElementById('s-zoom');
 const sPost = document.getElementById('s-post');
-const vSize = document.getElementById('v-size');
 const vZoom = document.getElementById('v-zoom');
 const vPost = document.getElementById('v-post');
+const sHeading = document.getElementById('s-heading');
+const vHeading = document.getElementById('v-heading');
+const sMarker = document.getElementById('s-marker');
+const vMarker = document.getElementById('v-marker');
+const selPalette = document.getElementById('sel-palette');
 
 let current = null;
 let place = { lat: null, lon: null, takenAt: null, name: null, source: 'manual' };
@@ -251,6 +267,42 @@ function fillContext(ctx) {
   if (ctx.has_gps) resolveName(ctx.lat, ctx.lon);
 }
 
+/* ---------------- HUD ---------------- */
+
+let layoutReady = false;
+
+async function initHud() {
+  if (layoutReady) return true;
+  try {
+    await loadLayout();
+    layoutReady = true;
+    hudStatus.className = 'ctx-note';
+    hudStatus.textContent = '';
+    return true;
+  } catch {
+    hudPanel.hidden = true;
+    hudStatus.className = 'ctx-note is-error';
+    hudStatus.textContent = '读不到 ui_source/ui_layout.json，HUD 布局不可用。';
+    return false;
+  }
+}
+
+/** 把小地图挪到原作布局里的那个位置和大小。 */
+function snapMinimapToLayout() {
+  const slot = minimapSlot();
+  if (!slot) return;
+  mapState.x = slot.x;
+  mapState.y = slot.y;
+  mapState.diameter = slot.diameter;
+  refreshMap();
+}
+
+function paintHud({ snap = false } = {}) {
+  if (!layoutReady) return;
+  renderHud();
+  if (snap) snapMinimapToLayout();
+}
+
 /* ---------------- 元信息 ---------------- */
 
 function renderMeta(info) {
@@ -290,6 +342,16 @@ async function uploadPhoto(file) {
     workspace.hidden = false;
     dropzone.classList.add('is-compact');
     fillContext(data.context);
+
+    if (await initHud()) {
+      hudPanel.hidden = false;
+      // 拍摄时间直接喂给 HUD 的时钟
+      if (data.context.taken_at) {
+        hudState.clockText = data.context.taken_at.slice(11, 16);
+        inClock.value = hudState.clockText;
+      }
+      paintHud({ snap: true });
+    }
     setStatus('');
   } catch (err) {
     setStatus(err.message, true);
@@ -336,6 +398,20 @@ qInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') { e.preventDefault(); runSearch(); }
 });
 
+async function loadPalettes() {
+  try {
+    const r = await fetch('/api/palettes');
+    const d = await r.json();
+    selPalette.innerHTML = d.palettes
+      .map((p) => `<option value="${p.key}">${escapeHtml(p.name)}</option>`)
+      .join('');
+    selPalette.value = mapState.palette;
+  } catch {
+    selPalette.innerHTML = '<option value="botw">原作深色</option>';
+  }
+}
+loadPalettes();
+
 onMapStatus((text, isError = false) => {
   mapStatus.textContent = text || '';
   mapStatus.className = 'ctx-note' + (isError ? ' is-error' : '');
@@ -347,24 +423,77 @@ mapOn.addEventListener('change', () => {
 });
 
 // 大小只改显示尺寸，不用重新拉瓦片；范围和色阶必须重画
-sSize.addEventListener('input', () => {
-  mapState.diameter = Number(sSize.value) / 100;
-  vSize.textContent = `${sSize.value}%`;
-  refreshMap({ redraw: false });
-});
-sSize.addEventListener('change', () => refreshMap());
-
 sZoom.addEventListener('input', () => {
   mapState.zoom = Number(sZoom.value);
   vZoom.textContent = `z${sZoom.value}`;
 });
 sZoom.addEventListener('change', () => refreshMap());
 
+// 箭头在前端 canvas 图层上画，拖动时即时重绘，不发任何请求
+sHeading.addEventListener('input', () => {
+  mapState.heading = Number(sHeading.value);
+  vHeading.textContent = `${sHeading.value}°`;
+  drawMarker();
+});
+
+// 箭头大小同样只动 canvas 图层，不回服务器
+sMarker.addEventListener('input', () => {
+  mapState.markerScale = Number(sMarker.value) / 100;
+  vMarker.textContent = `${sMarker.value}%`;
+  drawMarker();
+});
+
+selPalette.addEventListener('change', () => {
+  mapState.palette = selPalette.value;
+  refreshMap();
+});
+
 sPost.addEventListener('input', () => {
   mapState.posterize = Number(sPost.value);
-  vPost.textContent = sPost.value;
+  vPost.textContent = Number(sPost.value) > 1 ? sPost.value : '关';
 });
 sPost.addEventListener('change', () => refreshMap());
+
+hudOn.addEventListener('change', () => {
+  hudState.enabled = hudOn.checked;
+  paintHud();
+});
+
+sHudScale.addEventListener('input', () => {
+  hudState.scale = Number(sHudScale.value) / 100;
+  vHudScale.textContent = `${sHudScale.value}%`;
+  paintHud({ snap: true });
+});
+
+sHearts.addEventListener('input', () => {
+  hudState.hearts = Number(sHearts.value);
+  vHearts.textContent = sHearts.value;
+  // 剩余心心不能超过总数
+  if (hudState.heartsFull > hudState.hearts) {
+    hudState.heartsFull = hudState.hearts;
+    sHeartsFull.value = String(hudState.hearts);
+    vHeartsFull.textContent = sHeartsFull.value;
+  }
+  sHeartsFull.max = sHearts.value;
+  paintHud();
+});
+
+sHeartsFull.addEventListener('input', () => {
+  hudState.heartsFull = Math.min(Number(sHeartsFull.value), hudState.hearts);
+  sHeartsFull.value = String(hudState.heartsFull);
+  vHeartsFull.textContent = sHeartsFull.value;
+  paintHud();
+});
+
+inWeather.addEventListener('input', () => {
+  hudState.weatherText = inWeather.value;
+  paintHud();
+});
+
+inClock.addEventListener('input', () => {
+  hudState.clockText = inClock.value;
+  paintHud();
+});
 
 resetBtn.addEventListener('click', () => {
   current = null;
@@ -373,6 +502,7 @@ resetBtn.addEventListener('click', () => {
   resolveToken++;
   workspace.hidden = true;
   mapPanel.hidden = true;
+  hudPanel.hidden = true;
   dropzone.classList.remove('is-compact');
   photoEl.removeAttribute('src');
   [latInput, lonInput, timeInput, nameInput].forEach((el) => {
@@ -381,6 +511,13 @@ resetBtn.addEventListener('click', () => {
   });
   chipsEl.innerHTML = '';
   qResults.hidden = true;
+  mapState.heading = 0;
+  sHeading.value = '0';
+  vHeading.textContent = '0°';
+  mapState.markerScale = 1;
+  sMarker.value = '100';
+  vMarker.textContent = '100%';
+  drawMarker();
   mapState.lat = mapState.lon = null;
   refreshMap({ redraw: false });
   setStatus('');

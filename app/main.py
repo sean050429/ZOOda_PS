@@ -33,6 +33,23 @@ PREVIEW_MAX_EDGE = 2000
 app = FastAPI(title="Zelda_PS")
 
 
+@app.middleware("http")
+async def no_cache_frontend(request, call_next):
+    """开发时禁止浏览器缓存前端文件。
+
+    默认的 StaticFiles 带 etag/last-modified，浏览器会直接吃缓存
+    （transferSize=0，根本不回服务器），改了 js/css 刷新也看不到效果，
+    非常容易误判成代码有 bug。地图瓦片那种真正该缓存的走 /api，不受影响。
+    """
+    response = await call_next(request)
+    path = request.url.path
+    if not path.startswith(("/api/", "/uploads/")) and (
+        path.endswith((".js", ".css", ".html", ".json")) or path == "/"
+    ):
+        response.headers["Cache-Control"] = "no-store, must-revalidate"
+    return response
+
+
 @app.get("/api/health")
 def health() -> dict:
     return {"ok": True}
@@ -98,6 +115,13 @@ def api_landmark(lat: float = Query(..., ge=-90, le=90),
     return geo.find_landmark(lat, lon)
 
 
+@app.get("/api/palettes")
+def api_palettes() -> dict:
+    """小地图可选的配色，前端拿去填下拉框。"""
+    return {"palettes": [{"key": k, "name": v["name"]}
+                         for k, v in minimap.PALETTES.items()]}
+
+
 @app.get("/api/search")
 def api_search(q: str = Query(..., min_length=1, max_length=120)) -> dict:
     """地名 → 坐标。没有 GPS 的照片靠这个。"""
@@ -111,11 +135,12 @@ def api_minimap(lat: float = Query(..., ge=-90, le=90),
                 lon: float = Query(..., ge=-180, le=180),
                 zoom: int = Query(15, ge=3, le=18),
                 size: int = Query(420, ge=120, le=900),
-                posterize: int = Query(4, ge=2, le=8),
-                heading: float | None = Query(None, ge=0, lt=360)) -> Response:
+                posterize: int = Query(0, ge=0, le=8),
+                palette: str = Query(minimap.DEFAULT_PALETTE)) -> Response:
+    """只出底图。玩家箭头由前端 canvas 图层画，拖朝向不用回服务器。"""
     try:
         img = minimap.render(lat, lon, zoom=zoom, size=size,
-                             posterize=posterize, heading=heading)
+                             posterize=posterize, palette=palette)
     except Exception as e:
         raise HTTPException(502, f"地图瓦片拉取失败：{e}")
 
@@ -126,5 +151,11 @@ def api_minimap(lat: float = Query(..., ge=-90, le=90),
 
 
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
+
+# 从游戏截图抠出来的 UI 元件，只用于本地对照排版。
+# 目录在 .gitignore 里，这些是任天堂的素材，不会进仓库也不会进成品。
+UI_SOURCE_DIR = BASE_DIR / "ui_source"
+if UI_SOURCE_DIR.exists():
+    app.mount("/ui_source", StaticFiles(directory=UI_SOURCE_DIR), name="ui_source")
 # 挂在根路径，必须放最后，否则会盖掉上面的 /api 和 /uploads 路由
 app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="static")

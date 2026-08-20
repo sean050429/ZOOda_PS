@@ -400,10 +400,8 @@ main {
 
 .minimap {
   position: absolute;
-  /* overlay 整体 pointer-events:none，这里要单独打开才能拖 */
-  pointer-events: auto;
-  cursor: grab;
-  touch-action: none;
+  /* 位置由布局决定，不接收鼠标事件 */
+  pointer-events: none;
   transform: translate(-50%, -50%);
   filter: drop-shadow(0 3px 10px rgba(0, 0, 0, 0.45));
   transition: opacity 0.15s;
@@ -417,5 +415,64 @@ main {
   -webkit-user-drag: none;
 }
 
-.minimap.is-dragging { cursor: grabbing; }
 .minimap.is-loading { opacity: 0.5; }
+
+/* ---------- 照片上的 HUD ---------- */
+
+.hud {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.hud-item {
+  position: absolute;
+  /* 抠图是小尺寸原图放大来的，用 pixelated 保住游戏 UI 的硬边 */
+  image-rendering: auto;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.55));
+}
+
+.hud-text {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  color: #f2f4f7;
+  font-family: -apple-system, "PingFang SC", "Helvetica Neue", sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8), 0 0 8px rgba(0, 0, 0, 0.5);
+  line-height: 1;
+}
+
+.hud-clock { justify-content: flex-start; }
+
+/* 天气条先用文字占位，第 6 步接了真实天气再换成图标 */
+.hud-weather {
+  justify-content: center;
+  border-radius: 999px;
+  background: rgba(28, 34, 44, 0.55);
+  backdrop-filter: blur(2px);
+  padding: 0 4%;
+}
+
+.select {
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #14171c;
+  color: var(--ink);
+  font-size: 13px;
+  font-family: inherit;
+}
+
+.select:focus { outline: none; border-color: var(--sheikah); }
+
+/* 玩家箭头图层，盖在小地图底图上，不吃鼠标事件（拖动仍由外层负责） */
+.minimap-marker {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
