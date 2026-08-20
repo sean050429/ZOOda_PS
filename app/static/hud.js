@@ -32,12 +32,13 @@ const REPLACED = new Set([
   'hearts_row',           // 按用户设定的数量重新拼
   'heart_full', 'heart_empty',
   'clock_text',           // 换成照片的拍摄时间
-  'weather_bar',          // 天气先用文字占位
+  // 原件的胶囊图里烤死了三个天气图标，直接渲染会和文字叠在一起，
+  // 所以底框用 CSS 重画（颜色取自原件），只保留胶囊本身
+  'weather_bar',
   'weather_icon_now', 'weather_icon_next', 'weather_icon_last',
   'weather_marker',
   'minimap_player_arrow',   // 我们生成的小地图自带中心指针，会撞
   'minimap_marker_shrine',  // 神庙标记是游戏专有的，照片上没有意义
-  'disk_temperature',       // 换成自己画的温度表盘，见 drawTempDial
 ]);
 
 export async function loadLayout() {
@@ -114,14 +115,11 @@ export function renderHud() {
 
 /* ---------------- 温度表盘 ---------------- */
 
-// 照游戏原件重画：12 段刻度、左青右橙、指针朝上是常温、下方标温度。
-// 自己画而不用抠图，顺带把这个元件从「游戏素材」名单里划掉了。
-const DIAL_BASE = '#39485A';
-const DIAL_RIM = '#22303E';
-const DIAL_COLD = [122, 226, 226];
-const DIAL_HOT = [242, 138, 24];
-const DIAL_NEUTRAL = [74, 92, 110];
-const DIAL_NEEDLE = '#BFE4F2';
+// 盘面直接用游戏原件（外圈 12 段刻度、配色、外框全部保留），
+// 只重画会动的部分：盖掉原件里那根固定朝上的指针，换成按温度旋转的，
+// 并在下方写出读数。两个颜色都是从原件里采样出来的。
+const DIAL_INNER = '#405860';   // 盘心底色，用来遮住原指针
+const DIAL_NEEDLE = '#88F0F8';  // 原件的指针与文字色
 
 // 实测范围：南极 -50.9°C、撒哈拉 36.3°C。映射到 ±110 度指针摆幅。
 const DIAL_MIN = -20;
@@ -135,11 +133,10 @@ function tempToAngle(t) {
   return Math.max(-DIAL_SWEEP, Math.min(DIAL_SWEEP, a));
 }
 
-function mix(a, b, t) {
-  return `rgb(${a.map((v, i) => Math.round(v + (b[i] - v) * t)).join(',')})`;
-}
-
 function renderTempDial(scale) {
+  const t = hudState.temperature;
+  if (t === null || t === undefined) return;   // 没查到就让原件原样显示
+
   const spec = byId('disk_temperature');
   if (!spec) return;
   const pos = place(spec.box, spec.anchor, scale);
@@ -155,66 +152,33 @@ function renderTempDial(scale) {
 
   const ctx = cv.getContext('2d');
   const c = px / 2;
-  const t = hudState.temperature;
 
-  // 盘面
+  // 盖住原件那根固定指针和 °C 字样，外圈刻度保持原样露出来
   ctx.beginPath();
-  ctx.arc(c, c, c * 0.94, 0, Math.PI * 2);
-  ctx.fillStyle = DIAL_BASE;
+  ctx.arc(c, c, c * 0.60, 0, Math.PI * 2);
+  ctx.fillStyle = DIAL_INNER;
   ctx.fill();
-  ctx.lineWidth = px * 0.05;
-  ctx.strokeStyle = DIAL_RIM;
+
+  // 按温度旋转的指针
+  const a = ((tempToAngle(t) - 90) * Math.PI) / 180;
+  ctx.strokeStyle = DIAL_NEEDLE;
+  ctx.lineCap = 'round';
+  ctx.lineWidth = px * 0.07;
+  ctx.beginPath();
+  ctx.moveTo(c, c);
+  ctx.lineTo(c + Math.cos(a) * c * 0.48, c + Math.sin(a) * c * 0.48);
   ctx.stroke();
-
-  // 12 段刻度：正上方为常温，越往左越冷（青），越往右越热（橙）
-  const segs = 12;
-  for (let i = 0; i < segs; i++) {
-    const from = -90 + (i * 360) / segs + 1.5;
-    const to = -90 + ((i + 1) * 360) / segs - 1.5;
-    let midDeg = (from + to) / 2 + 90;       // 相对正上方
-    if (midDeg > 180) midDeg -= 360;
-    // 靠近正上方的几段保持中性，只有偏离够远的才上色 ——
-    // 原件里大部分刻度是暗的，只有两侧末端亮着青和橙
-    const norm = Math.max(0, Math.min(1, (Math.abs(midDeg) - 55) / 95));
-    const cold = midDeg < 0;
-    ctx.beginPath();
-    ctx.moveTo(c, c);
-    ctx.arc(c, c, c * 0.9, (from * Math.PI) / 180, (to * Math.PI) / 180);
-    ctx.closePath();
-    ctx.fillStyle = mix(DIAL_NEUTRAL, cold ? DIAL_COLD : DIAL_HOT, norm);
-    ctx.fill();
-  }
-
-  // 中心挖空，让刻度只剩外圈一环
   ctx.beginPath();
-  ctx.arc(c, c, c * 0.62, 0, Math.PI * 2);
-  ctx.fillStyle = DIAL_BASE;
+  ctx.arc(c, c, px * 0.07, 0, Math.PI * 2);
+  ctx.fillStyle = DIAL_NEEDLE;
   ctx.fill();
 
-  if (t !== null && t !== undefined) {
-    // 指针
-    const a = ((tempToAngle(t) - 90) * Math.PI) / 180;
-    ctx.save();
-    ctx.strokeStyle = DIAL_NEEDLE;
-    ctx.lineCap = 'round';
-    ctx.lineWidth = px * 0.075;
-    ctx.beginPath();
-    ctx.moveTo(c, c);
-    ctx.lineTo(c + Math.cos(a) * c * 0.52, c + Math.sin(a) * c * 0.52);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.arc(c, c, px * 0.075, 0, Math.PI * 2);
-    ctx.fillStyle = DIAL_NEEDLE;
-    ctx.fill();
-    ctx.restore();
-
-    // 读数
-    ctx.fillStyle = DIAL_NEEDLE;
-    ctx.font = `700 ${px * 0.2}px -apple-system, "PingFang SC", sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(`${Math.round(t)}°`, c, c + px * 0.22);
-  }
+  // 读数写在原件 °C 字样原来的位置
+  ctx.fillStyle = DIAL_NEEDLE;
+  ctx.font = `700 ${px * 0.22}px -apple-system, "PingFang SC", sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(`${Math.round(t)}°`, c, c + px * 0.26);
 }
 
 /** 按设定的数量重拼血条，用单格图铺，而不是整排那张图。 */
