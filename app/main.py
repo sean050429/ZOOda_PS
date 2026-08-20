@@ -33,6 +33,23 @@ PREVIEW_MAX_EDGE = 2000
 app = FastAPI(title="Zelda_PS")
 
 
+@app.middleware("http")
+async def no_cache_frontend(request, call_next):
+    """开发时禁止浏览器缓存前端文件。
+
+    默认的 StaticFiles 带 etag/last-modified，浏览器会直接吃缓存
+    （transferSize=0，根本不回服务器），改了 js/css 刷新也看不到效果，
+    非常容易误判成代码有 bug。地图瓦片那种真正该缓存的走 /api，不受影响。
+    """
+    response = await call_next(request)
+    path = request.url.path
+    if not path.startswith(("/api/", "/uploads/")) and (
+        path.endswith((".js", ".css", ".html", ".json")) or path == "/"
+    ):
+        response.headers["Cache-Control"] = "no-store, must-revalidate"
+    return response
+
+
 @app.get("/api/health")
 def health() -> dict:
     return {"ok": True}
