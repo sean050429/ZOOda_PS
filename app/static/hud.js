@@ -166,19 +166,34 @@ function renderTempDial(scale) {
   ctx.lineWidth = px * 0.07;
   ctx.beginPath();
   ctx.moveTo(c, c);
-  ctx.lineTo(c + Math.cos(a) * c * 0.48, c + Math.sin(a) * c * 0.48);
+  ctx.lineTo(c + Math.cos(a) * c * 0.46, c + Math.sin(a) * c * 0.46);
   ctx.stroke();
   ctx.beginPath();
   ctx.arc(c, c, px * 0.07, 0, Math.PI * 2);
   ctx.fillStyle = DIAL_NEEDLE;
   ctx.fill();
 
-  // 读数写在原件 °C 字样原来的位置
-  ctx.fillStyle = DIAL_NEEDLE;
-  ctx.font = `700 ${px * 0.22}px -apple-system, "PingFang SC", sans-serif`;
+  // 读数写在原件 °C 字样原来的位置。
+  // 字号必须按遮盖圆收：写死字号时文字会压到外圈刻度上，负温「-51°」
+  // 更宽、超得更多。注意要按文字**角点**到圆心的距离来收 —— 只看基线
+  // 那一行的弦长是不够的，文字本身有高度，右下角仍会探出圆外。
+  const label = `${Math.round(t)}°`;
+  const coverR = c * 0.60;
+  const baselineY = px * 0.17;   // 读数中心相对圆心的下移量
+
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText(`${Math.round(t)}°`, c, c + px * 0.26);
+  let fontPx = px * 0.22;
+  for (let i = 0; i < 12; i++) {
+    ctx.font = `700 ${fontPx}px -apple-system, "PingFang SC", sans-serif`;
+    const halfW = ctx.measureText(label).width / 2;
+    const halfH = fontPx * 0.42;                       // 字形实际高度约为字号的 0.84
+    const corner = Math.hypot(halfW, baselineY + halfH);
+    if (corner <= coverR * 0.94) break;                // 留一点边距
+    fontPx *= 0.9;
+  }
+  ctx.fillStyle = DIAL_NEEDLE;
+  ctx.fillText(label, c, c + baselineY);
 }
 
 /** 按设定的数量重拼血条，用单格图铺，而不是整排那张图。 */
