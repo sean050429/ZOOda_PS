@@ -14,6 +14,8 @@ export const mapState = {
   diameter: 0.22, // 直径占照片宽度的比例
   zoom: 15,
   posterize: 4,
+  palette: 'botw',
+  heading: 0,     // 中心箭头朝向，0 = 正上
   lat: null,
   lon: null,
 };
@@ -109,7 +111,9 @@ function fetchImage() {
   const size = clamp(px, 120, 900);
 
   const url = `/api/minimap?lat=${mapState.lat}&lon=${mapState.lon}` +
-              `&zoom=${mapState.zoom}&size=${size}&posterize=${mapState.posterize}`;
+              `&zoom=${mapState.zoom}&size=${size}&posterize=${mapState.posterize}` +
+              `&palette=${encodeURIComponent(mapState.palette)}` +
+              `&heading=${mapState.heading}`;
 
   const token = ++pending;
   el.classList.add('is-loading');

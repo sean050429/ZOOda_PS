@@ -29,17 +29,54 @@ TILE_PX_1X = 256
 TILE_PX_2X = 512
 RETINA_THRESHOLD = 520  # 请求的直径超过这个才值得上 @2x
 
-# 羊皮纸色阶：从深棕（水/阴影）到近白（高光），风格化时按亮度映射到这条带上
-PARCHMENT = [
-    (58, 44, 30),
-    (92, 72, 46),
-    (140, 112, 72),
-    (186, 158, 108),
-    (214, 192, 146),
-    (236, 222, 186),
-]
-INK = (44, 32, 20)        # 描边、指针的深色
-GOLD = (198, 166, 96)     # 外圈金环
+# 三套配色。每套是一条从暗到亮的色阶，风格化时按亮度映射上去。
+#
+# botw 这套是直接从游戏截图的小地图里采样出来的：原作并不是想象中的
+# 冷灰蓝，而是很暗的橄榄褐（亮度只在 60~89 之间），只有最亮的百分之几
+# 的水面和道路才泛冷蓝。和 HUD 摆在一起不违和，靠的是「暗」而不是「蓝」。
+PALETTES = {
+    "botw": {
+        "name": "原作深色",
+        "ramp": [
+            (44, 46, 42),
+            (58, 60, 54),
+            (72, 68, 57),
+            (80, 75, 58),
+            (94, 98, 110),
+            (140, 150, 168),
+        ],
+        "ink": (26, 28, 26),
+        "ring": (108, 116, 128),
+    },
+    "slate": {
+        "name": "希卡冷蓝",
+        "ramp": [
+            (28, 34, 42),
+            (44, 54, 66),
+            (62, 76, 90),
+            (86, 102, 118),
+            (120, 140, 158),
+            (176, 196, 212),
+        ],
+        "ink": (18, 24, 30),
+        "ring": (120, 190, 210),
+    },
+    "parchment": {
+        "name": "羊皮纸",
+        "ramp": [
+            (58, 44, 30),
+            (92, 72, 46),
+            (140, 112, 72),
+            (186, 158, 108),
+            (214, 192, 146),
+            (236, 222, 186),
+        ],
+        "ink": (44, 32, 20),
+        "ring": (198, 166, 96),
+    },
+}
+
+DEFAULT_PALETTE = "botw"
 
 
 # ---------------- 瓦片 ----------------
@@ -110,7 +147,7 @@ def fetch_area(lat: float, lon: float, zoom: int, size: int) -> Image.Image:
                 tiles[futures[fut]] = fut.result()
 
     canvas = Image.new("RGB", (tile_px * (tx1 - tx0 + 1),
-                               tile_px * (ty1 - ty0 + 1)), PARCHMENT[-1])
+                               tile_px * (ty1 - ty0 + 1)), get_palette(None)["ramp"][-1])
     for (x, y), tile in tiles.items():
         if tile.width != tile_px:
             tile = tile.resize((tile_px, tile_px), Image.LANCZOS)
@@ -127,22 +164,29 @@ def fetch_area(lat: float, lon: float, zoom: int, size: int) -> Image.Image:
 
 # ---------------- 风格化 ----------------
 
-def _parchment_lut() -> list[int]:
-    """做一张 256→RGB 的查表，把亮度直接映射成羊皮纸色阶。"""
+def _build_lut(ramp: list[tuple[int, int, int]]) -> list[int]:
+    """做一张 256→RGB 的查表，把亮度直接映射成色阶上的颜色。"""
     r_lut, g_lut, b_lut = [], [], []
-    segments = len(PARCHMENT) - 1
+    segments = len(ramp) - 1
     for i in range(256):
         pos = i / 255 * segments
         idx = min(int(pos), segments - 1)
         t = pos - idx
-        c0, c1 = PARCHMENT[idx], PARCHMENT[idx + 1]
+        c0, c1 = ramp[idx], ramp[idx + 1]
         r_lut.append(round(c0[0] + (c1[0] - c0[0]) * t))
         g_lut.append(round(c0[1] + (c1[1] - c0[1]) * t))
         b_lut.append(round(c0[2] + (c1[2] - c0[2]) * t))
     return r_lut + g_lut + b_lut
 
 
-_LUT = _parchment_lut()
+for _key, _spec in PALETTES.items():
+    _spec["key"] = _key
+
+_LUT_CACHE = {key: _build_lut(spec["ramp"]) for key, spec in PALETTES.items()}
+
+
+def get_palette(name: str | None) -> dict:
+    return PALETTES.get(name or DEFAULT_PALETTE, PALETTES[DEFAULT_PALETTE])
 
 
 def _spread(gray: Image.Image) -> int:
@@ -161,7 +205,8 @@ def _spread(gray: Image.Image) -> int:
     return percentile(0.98) - percentile(0.02)
 
 
-def stylize(img: Image.Image, posterize: int = 4) -> Image.Image:
+def stylize(img: Image.Image, posterize: int = 4,
+            palette: str | None = None) -> Image.Image:
     """现代地图 → 羊皮纸地图。
 
     关键一步是先做直方图拉伸。voyager 瓦片整张图的灰度只落在 205~255
@@ -190,8 +235,9 @@ def stylize(img: Image.Image, posterize: int = 4) -> Image.Image:
     edges = gray.filter(ImageFilter.FIND_EDGES)
     edges = edges.point(lambda v: 255 if v > 24 else 0)
 
-    out = gray.convert("RGB").point(_LUT)
-    ink = Image.new("RGB", out.size, INK)
+    spec = get_palette(palette)
+    out = gray.convert("RGB").point(_LUT_CACHE[spec["key"]])
+    ink = Image.new("RGB", out.size, spec["ink"])
     out = Image.composite(ink, out, edges)
 
     return out.filter(ImageFilter.SMOOTH)
@@ -213,7 +259,8 @@ def _vignette(size: int) -> Image.Image:
     return grad.filter(ImageFilter.GaussianBlur(size / 30))
 
 
-def round_frame(img: Image.Image, heading: float | None = None) -> Image.Image:
+def round_frame(img: Image.Image, heading: float | None = None,
+                palette: str | None = None) -> Image.Image:
     """裁成圆形，套上金环，中心放一个指针。返回带透明通道的 RGBA。"""
     size = img.width
     ss = 4  # 超采样，圆边才不会有锯齿
@@ -224,21 +271,22 @@ def round_frame(img: Image.Image, heading: float | None = None) -> Image.Image:
     mask = mask.resize((size, size), Image.LANCZOS)
 
     # 暗角
-    dark = Image.new("RGB", img.size, (30, 22, 14))
+    dark = Image.new("RGB", img.size, get_palette(palette)["ramp"][0])
     img = Image.composite(img, dark, _vignette(size))
 
     out = Image.new("RGBA", (size, size), (0, 0, 0, 0))
     out.paste(img, (0, 0), mask)
 
+    spec = get_palette(palette)
     ring = Image.new("RGBA", (big, big), (0, 0, 0, 0))
     rd = ImageDraw.Draw(ring)
     outer = max(3, round(size * 0.028)) * ss
     rd.ellipse([outer // 2, outer // 2, big - 1 - outer // 2, big - 1 - outer // 2],
-               outline=INK + (255,), width=outer)
+               outline=spec["ink"] + (255,), width=outer)
     inner = max(2, round(size * 0.016)) * ss
     pad = outer + inner // 2
     rd.ellipse([pad, pad, big - 1 - pad, big - 1 - pad],
-               outline=GOLD + (255,), width=inner)
+               outline=spec["ring"] + (255,), width=inner)
     out.alpha_composite(ring.resize((size, size), Image.LANCZOS))
 
     # 中心指针：拍摄者站的位置
@@ -252,13 +300,14 @@ def round_frame(img: Image.Image, heading: float | None = None) -> Image.Image:
                        (math.radians(180), r * 0.28), (math.radians(220), r * 0.62)):
         a = ang + a_off - math.pi / 2
         pts.append((c + math.cos(a) * rad, c + math.sin(a) * rad))
-    md.polygon(pts, fill=(240, 226, 190, 255), outline=INK + (255,))
+    md.polygon(pts, fill=spec["ramp"][-1] + (255,), outline=spec["ink"] + (255,))
     out.alpha_composite(marker.resize((size, size), Image.LANCZOS))
 
     return out
 
 
 def render(lat: float, lon: float, zoom: int = 15, size: int = 420,
-           posterize: int = 4, heading: float | None = None) -> Image.Image:
+           posterize: int = 4, heading: float | None = None,
+           palette: str | None = None) -> Image.Image:
     raw = fetch_area(lat, lon, zoom, size)
-    return round_frame(stylize(raw, posterize), heading)
+    return round_frame(stylize(raw, posterize, palette), heading, palette)
