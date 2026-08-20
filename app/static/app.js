@@ -144,6 +144,7 @@ async function resolveName(lat, lon) {
 }
 
 const resolveNameSoon = debounce((lat, lon) => resolveName(lat, lon), 700);
+const loadWeatherSoon = debounce(() => loadWeather(), 700);
 
 /* ---------------- 地名搜索 ---------------- */
 
@@ -194,6 +195,7 @@ function syncPlace(ctx = null, { skipNameResolve = false } = {}) {
 
   const prevLat = place.lat;
   const prevLon = place.lon;
+  const prevTakenAt = place.takenAt;
 
   place = {
     lat: latBad ? null : lat,
@@ -214,6 +216,7 @@ function syncPlace(ctx = null, { skipNameResolve = false } = {}) {
   if (moved && place.lat !== null && place.lon !== null && !skipNameResolve) {
     resolveNameSoon(place.lat, place.lon);
   }
+  if (moved || place.takenAt !== prevTakenAt) loadWeatherSoon();
 }
 
 function renderNote(ctx, { latBad, lonBad }) {
@@ -297,6 +300,41 @@ function snapMinimapToLayout() {
   refreshMap();
 }
 
+let weatherToken = 0;
+
+/** 有坐标 + 拍摄时间就去查当时的天气，填进 HUD。 */
+async function loadWeather() {
+  if (!layoutReady) return;
+  const { lat, lon, takenAt } = place;
+  if (lat === null || lon === null || !takenAt) {
+    hudStatus.className = 'ctx-note';
+    hudStatus.textContent = '填上坐标和拍摄时间就能查到当时的天气。';
+    return;
+  }
+
+  const token = ++weatherToken;
+  hudStatus.className = 'ctx-note';
+  hudStatus.textContent = '正在查询拍摄当时的天气…';
+  try {
+    const r = await fetch(
+      `/api/weather?lat=${lat}&lon=${lon}&at=${encodeURIComponent(takenAt)}`);
+    const d = await r.json();
+    if (token !== weatherToken) return;
+    if (!r.ok || !d.ok) throw new Error(d.detail || d.error || '查询失败');
+
+    hudState.temperature = d.temperature;
+    hudState.weatherText = d.text;
+    inWeather.value = d.text;
+    paintHud();
+    hudStatus.textContent =
+      `${d.text} · ${d.temperature}°C（${d.time} 实况，来自 Open-Meteo）`;
+  } catch (err) {
+    if (token !== weatherToken) return;
+    hudStatus.className = 'ctx-note is-error';
+    hudStatus.textContent = `天气查询失败：${err.message}。天气文字可以手填。`;
+  }
+}
+
 function paintHud({ snap = false } = {}) {
   if (!layoutReady) return;
   renderHud();
@@ -351,6 +389,7 @@ async function uploadPhoto(file) {
         inClock.value = hudState.clockText;
       }
       paintHud({ snap: true });
+      loadWeather();
     }
     setStatus('');
   } catch (err) {
@@ -511,6 +550,8 @@ resetBtn.addEventListener('click', () => {
   });
   chipsEl.innerHTML = '';
   qResults.hidden = true;
+  hudState.temperature = null;
+  weatherToken++;
   mapState.heading = 0;
   sHeading.value = '0';
   vHeading.textContent = '0°';
