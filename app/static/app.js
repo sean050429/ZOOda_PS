@@ -1,4 +1,4 @@
-import { mapState, refresh as refreshMap, onMapStatus } from '/minimap.js';
+import { mapState, refresh as refreshMap, onMapStatus, drawMarker } from '/minimap.js';
 import { hudState, loadLayout, renderHud, minimapSlot } from '/hud.js';
 
 const dropzone = document.getElementById('dropzone');
@@ -44,6 +44,8 @@ const vZoom = document.getElementById('v-zoom');
 const vPost = document.getElementById('v-post');
 const sHeading = document.getElementById('s-heading');
 const vHeading = document.getElementById('v-heading');
+const sMarker = document.getElementById('s-marker');
+const vMarker = document.getElementById('v-marker');
 const selPalette = document.getElementById('sel-palette');
 
 let current = null;
@@ -438,12 +440,19 @@ sZoom.addEventListener('input', () => {
 });
 sZoom.addEventListener('change', () => refreshMap());
 
-// 箭头朝向：拖的时候只更新读数，松手才重画（每次都要回服务器出图）
+// 箭头在前端 canvas 图层上画，拖动时即时重绘，不发任何请求
 sHeading.addEventListener('input', () => {
   mapState.heading = Number(sHeading.value);
   vHeading.textContent = `${sHeading.value}°`;
+  drawMarker();
 });
-sHeading.addEventListener('change', () => refreshMap());
+
+// 箭头大小同样只动 canvas 图层，不回服务器
+sMarker.addEventListener('input', () => {
+  mapState.markerScale = Number(sMarker.value) / 100;
+  vMarker.textContent = `${sMarker.value}%`;
+  drawMarker();
+});
 
 selPalette.addEventListener('change', () => {
   mapState.palette = selPalette.value;
@@ -452,7 +461,7 @@ selPalette.addEventListener('change', () => {
 
 sPost.addEventListener('input', () => {
   mapState.posterize = Number(sPost.value);
-  vPost.textContent = sPost.value;
+  vPost.textContent = Number(sPost.value) > 1 ? sPost.value : '关';
 });
 sPost.addEventListener('change', () => refreshMap());
 
@@ -516,6 +525,10 @@ resetBtn.addEventListener('click', () => {
   mapState.heading = 0;
   sHeading.value = '0';
   vHeading.textContent = '0°';
+  mapState.markerScale = 1.7;
+  sMarker.value = '170';
+  vMarker.textContent = '170%';
+  drawMarker();
   mapState.lat = mapState.lon = null;
   refreshMap({ redraw: false });
   setStatus('');

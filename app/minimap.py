@@ -15,7 +15,7 @@ from io import BytesIO
 from pathlib import Path
 
 import httpx
-from PIL import Image, ImageDraw, ImageFilter, ImageOps, ImageStat
+from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageStat
 
 TILE_URL = "https://a.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png"
 UA = "Zelda_PS/0.1 (personal photo UI overlay tool)"
@@ -25,58 +25,57 @@ TILE_CACHE.mkdir(parents=True, exist_ok=True)
 
 # @2x 瓦片是 512px 但体积约 4 倍。小地图本来就要压色阶，
 # 小尺寸时 @1x 完全够用，在慢网络上能省下大半等待时间。
+# 拼接画布的底色。只在个别瓦片没拿到时才会露出来，
+# 取中性浅灰，后面统一走调色链，不会突兀。
+TILE_GAP_FILL = (232, 230, 224)
+
 TILE_PX_1X = 256
 TILE_PX_2X = 512
 RETINA_THRESHOLD = 520  # 请求的直径超过这个才值得上 @2x
 
-# 三套配色。每套是一条从暗到亮的色阶，风格化时按亮度映射上去。
-#
-# botw 这套是直接从游戏截图的小地图里采样出来的：原作并不是想象中的
-# 冷灰蓝，而是很暗的橄榄褐（亮度只在 60~89 之间），只有最亮的百分之几
-# 的水面和道路才泛冷蓝。和 HUD 摆在一起不违和，靠的是「暗」而不是「蓝」。
+# 调色预设。走的是「照片调色」那一套 —— 降饱和 + 加褐调 + 压对比 + 叠色，
+# 而不是压色阶。好处是地图原有的层次全部保留，出来是一张被做旧的地图，
+# 而不是一张色块图。数值语义与 CSS filter 完全一致。
 PALETTES = {
     "botw": {
-        "name": "原作深色",
-        "ramp": [
-            (44, 46, 42),
-            (58, 60, 54),
-            (72, 68, 57),
-            (80, 75, 58),
-            (94, 98, 110),
-            (140, 150, 168),
-        ],
-        "ink": (26, 28, 26),
-        "ring": (108, 116, 128),
+        "name": "旷野之息",
+        "saturate": 0.55,
+        "sepia": 0.30,
+        "contrast": 1.08,
+        "brightness": 0.94,
+        "tint": (0x8A, 0x7A, 0x4E),
+        "tint_alpha": 0.28,
+        "ink": (44, 34, 20),
+        "ring": (198, 166, 96),
     },
     "slate": {
         "name": "希卡冷蓝",
-        "ramp": [
-            (28, 34, 42),
-            (44, 54, 66),
-            (62, 76, 90),
-            (86, 102, 118),
-            (120, 140, 158),
-            (176, 196, 212),
-        ],
+        "saturate": 0.35,
+        "sepia": 0.10,
+        "contrast": 1.12,
+        "brightness": 0.80,
+        "tint": (0x46, 0x5E, 0x74),
+        "tint_alpha": 0.42,
         "ink": (18, 24, 30),
         "ring": (120, 190, 210),
     },
-    "parchment": {
-        "name": "羊皮纸",
-        "ramp": [
-            (58, 44, 30),
-            (92, 72, 46),
-            (140, 112, 72),
-            (186, 158, 108),
-            (214, 192, 146),
-            (236, 222, 186),
-        ],
-        "ink": (44, 32, 20),
-        "ring": (198, 166, 96),
+    "dark": {
+        "name": "原作深色",
+        "saturate": 0.40,
+        "sepia": 0.22,
+        "contrast": 1.10,
+        "brightness": 0.62,
+        "tint": (0x5A, 0x58, 0x40),
+        "tint_alpha": 0.40,
+        "ink": (24, 24, 20),
+        "ring": (108, 116, 128),
     },
 }
 
 DEFAULT_PALETTE = "botw"
+
+for _key, _spec in PALETTES.items():
+    _spec["key"] = _key
 
 
 # ---------------- 瓦片 ----------------
@@ -147,7 +146,7 @@ def fetch_area(lat: float, lon: float, zoom: int, size: int) -> Image.Image:
                 tiles[futures[fut]] = fut.result()
 
     canvas = Image.new("RGB", (tile_px * (tx1 - tx0 + 1),
-                               tile_px * (ty1 - ty0 + 1)), get_palette(None)["ramp"][-1])
+                               tile_px * (ty1 - ty0 + 1)), TILE_GAP_FILL)
     for (x, y), tile in tiles.items():
         if tile.width != tile_px:
             tile = tile.resize((tile_px, tile_px), Image.LANCZOS)
@@ -164,34 +163,50 @@ def fetch_area(lat: float, lon: float, zoom: int, size: int) -> Image.Image:
 
 # ---------------- 风格化 ----------------
 
-def _build_lut(ramp: list[tuple[int, int, int]]) -> list[int]:
-    """做一张 256→RGB 的查表，把亮度直接映射成色阶上的颜色。"""
-    r_lut, g_lut, b_lut = [], [], []
-    segments = len(ramp) - 1
-    for i in range(256):
-        pos = i / 255 * segments
-        idx = min(int(pos), segments - 1)
-        t = pos - idx
-        c0, c1 = ramp[idx], ramp[idx + 1]
-        r_lut.append(round(c0[0] + (c1[0] - c0[0]) * t))
-        g_lut.append(round(c0[1] + (c1[1] - c0[1]) * t))
-        b_lut.append(round(c0[2] + (c1[2] - c0[2]) * t))
-    return r_lut + g_lut + b_lut
-
-
-for _key, _spec in PALETTES.items():
-    _spec["key"] = _key
-
-_LUT_CACHE = {key: _build_lut(spec["ramp"]) for key, spec in PALETTES.items()}
-
-
 def get_palette(name: str | None) -> dict:
     return PALETTES.get(name or DEFAULT_PALETTE, PALETTES[DEFAULT_PALETTE])
 
 
-def _spread(gray: Image.Image) -> int:
-    """灰度的 2%~98% 分位跨度，衡量「这张图上到底有没有东西」。"""
-    hist = gray.histogram()
+# CSS filter 的标准系数
+_LUMA = (0.213, 0.715, 0.072)
+_SEPIA = (
+    (0.393, 0.769, 0.189),
+    (0.349, 0.686, 0.168),
+    (0.272, 0.534, 0.131),
+)
+
+
+def _matmul(a, b):
+    return tuple(
+        tuple(sum(a[i][k] * b[k][j] for k in range(3)) for j in range(3))
+        for i in range(3)
+    )
+
+
+def _saturate_matrix(s: float):
+    lr, lg, lb = _LUMA
+    return (
+        (lr + (1 - lr) * s, lg - lg * s,       lb - lb * s),
+        (lr - lr * s,       lg + (1 - lg) * s, lb - lb * s),
+        (lr - lr * s,       lg - lg * s,       lb + (1 - lb) * s),
+    )
+
+
+def _sepia_matrix(a: float):
+    """0 = 原样，1 = 全褐。中间按线性插值，和 CSS 的 sepia() 一致。"""
+    return tuple(
+        tuple((1 - a) * (1.0 if i == j else 0.0) + a * _SEPIA[i][j] for j in range(3))
+        for i in range(3)
+    )
+
+
+def _stretch_lut(img: Image.Image) -> list[int] | None:
+    """按亮度的 1%~99% 分位算一条线性拉伸表，整幅图不够开阔时返回 None。
+
+    voyager 瓦片整张图的灰度只落在 205~255 这 50 级里，不拉伸的话
+    套完调色链是一张几乎没有层次的浅色盘。
+    """
+    hist = img.convert("L").histogram()
     total = sum(hist) or 1
 
     def percentile(p: float) -> int:
@@ -202,45 +217,68 @@ def _spread(gray: Image.Image) -> int:
                 return value
         return 255
 
-    return percentile(0.98) - percentile(0.02)
+    lo, hi = percentile(0.01), percentile(0.99)
+    if hi - lo < 8:  # 湖心、海面这种整张一个色的，拉伸只会放大噪点
+        return None
+    scale = 255.0 / (hi - lo)
+    return [min(255, max(0, round((v - lo) * scale))) for v in range(256)]
 
 
-def stylize(img: Image.Image, posterize: int = 4,
+def stylize(img: Image.Image, posterize: int = 0,
             palette: str | None = None) -> Image.Image:
-    """现代地图 → 羊皮纸地图。
+    """现代地图 → 做旧的手绘地图。
 
-    关键一步是先做直方图拉伸。voyager 瓦片整张图的灰度只落在 205~255
-    这 50 级里（标准差 9.5），直接压色阶会全部并进同一个桶，出来一片死白。
-    先把这 50 级摊到 0~255，结构才出得来。
+    调色链和 CSS filter 同序同义：saturate → sepia → contrast → brightness，
+    最后叠一层 multiply 的色。和压色阶的做法不同，这样地图原有的层次
+    全部保留，出来是「一张被做旧的地图」而不是「一张色块图」。
 
-    转灰度是有意的：底图原本的绿地/水面配色再好看，
-    混进羊皮纸色阶里也只会脏。丢掉色相、只留结构，再重新上色。
+    唯一的额外步骤是先做亮度拉伸，因为底图的动态范围太窄。关键在于
+    只拉亮度、不动色度：整幅拉伸会把 50 级的差距放大五倍，连带把水面
+    的蓝也放大成霓虹青。所以拆成「亮度拉满 + 色度按 saturate 缩放」。
+
+    posterize 默认关闭；给大于 1 的值才会额外压色阶。
     """
-    gray = img.convert("L")
-
-    # 湖心、海面这种地方整张瓦片就是一个色，硬拉伸只会把压缩噪点放大成一坨泥。
-    # 判据用 2%~98% 分位的跨度，不用标准差 —— 底图大片留白、结构只占少量像素，
-    # 标准差会把有内容的市区（悉尼 z15 只有 3.9）误判成空白。
-    if _spread(gray) <= 2:
-        gray = Image.new("L", gray.size, round(ImageStat.Stat(gray).mean[0]))
-    else:
-        gray = ImageOps.autocontrast(gray, cutoff=0.5)
-
-    # 压成几个色阶，这是「手绘地图」感的主要来源
-    levels = max(2, min(8, posterize))
-    step = 256 // levels
-    gray = gray.point(lambda v: min(255, (v // step) * step + step // 2))
-
-    # 色阶边界描边，模拟墨线
-    edges = gray.filter(ImageFilter.FIND_EDGES)
-    edges = edges.point(lambda v: 255 if v > 24 else 0)
-
     spec = get_palette(palette)
-    out = gray.convert("RGB").point(_LUT_CACHE[spec["key"]])
-    ink = Image.new("RGB", out.size, spec["ink"])
-    out = Image.composite(ink, out, edges)
+    rgb = img.convert("RGB")
 
-    return out.filter(ImageFilter.SMOOTH)
+    gray = rgb.convert("L")
+    lut = _stretch_lut(rgb)
+    stretched = gray.point(lut) if lut else gray
+
+    # 偏离灰度的部分就是色度，以 128 表示零，这样能保住负值
+    gray_rgb = Image.merge("RGB", (gray, gray, gray))
+    chroma = ImageChops.subtract(rgb, gray_rgb, scale=1, offset=128)
+    sat = spec["saturate"]
+    chroma = chroma.point([min(255, max(0, round(128 + (v - 128) * sat)))
+                           for v in range(256)] * 3)
+
+    base = Image.merge("RGB", (stretched, stretched, stretched))
+    out = ImageChops.add(base, chroma, scale=1, offset=-128)
+
+    # 褐调：0 = 原样，1 = 全褐，中间线性插值，与 CSS 的 sepia() 一致
+    m = _sepia_matrix(spec["sepia"])
+    out = out.convert("RGB", (
+        m[0][0], m[0][1], m[0][2], 0,
+        m[1][0], m[1][1], m[1][2], 0,
+        m[2][0], m[2][1], m[2][2], 0,
+    ))
+
+    # 对比度绕 0.5 中灰旋转，亮度是纯缩放，一张查表搞定
+    c, b = spec["contrast"], spec["brightness"]
+    out = out.point([min(255, max(0, round((((v / 255 - 0.5) * c + 0.5) * b) * 255)))
+                     for v in range(256)] * 3)
+
+    if spec["tint_alpha"] > 0:
+        tint = Image.new("RGB", out.size, spec["tint"])
+        out = Image.blend(out, ImageChops.multiply(out, tint), spec["tint_alpha"])
+
+    if posterize and posterize > 1:
+        levels = min(8, posterize)
+        step = 256 // levels
+        out = out.point([min(255, (v // step) * step + step // 2)
+                         for v in range(256)] * 3)
+
+    return out
 
 
 def _vignette(size: int) -> Image.Image:
@@ -259,9 +297,13 @@ def _vignette(size: int) -> Image.Image:
     return grad.filter(ImageFilter.GaussianBlur(size / 30))
 
 
-def round_frame(img: Image.Image, heading: float | None = None,
-                palette: str | None = None) -> Image.Image:
-    """裁成圆形，套上金环，中心放一个指针。返回带透明通道的 RGBA。"""
+def round_frame(img: Image.Image, palette: str | None = None) -> Image.Image:
+    """裁成圆形，套上外环。返回带透明通道的 RGBA。
+
+    这里不画玩家箭头 —— 箭头只跟朝向有关，跟坐标无关，放在前端
+    canvas 图层上画，拖朝向滑杆才能即时看到，不用回服务器重出图。
+    导出成品时再调 draw_player_marker() 按原图分辨率画一次。
+    """
     size = img.width
     ss = 4  # 超采样，圆边才不会有锯齿
     big = size * ss
@@ -270,14 +312,15 @@ def round_frame(img: Image.Image, heading: float | None = None,
     ImageDraw.Draw(mask).ellipse([0, 0, big - 1, big - 1], fill=255)
     mask = mask.resize((size, size), Image.LANCZOS)
 
+    spec = get_palette(palette)
+
     # 暗角
-    dark = Image.new("RGB", img.size, get_palette(palette)["ramp"][0])
+    dark = Image.new("RGB", img.size, spec["ink"])
     img = Image.composite(img, dark, _vignette(size))
 
     out = Image.new("RGBA", (size, size), (0, 0, 0, 0))
     out.paste(img, (0, 0), mask)
 
-    spec = get_palette(palette)
     ring = Image.new("RGBA", (big, big), (0, 0, 0, 0))
     rd = ImageDraw.Draw(ring)
     outer = max(3, round(size * 0.028)) * ss
@@ -289,25 +332,46 @@ def round_frame(img: Image.Image, heading: float | None = None,
                outline=spec["ring"] + (255,), width=inner)
     out.alpha_composite(ring.resize((size, size), Image.LANCZOS))
 
-    # 中心指针：拍摄者站的位置
-    marker = Image.new("RGBA", (big, big), (0, 0, 0, 0))
-    md = ImageDraw.Draw(marker)
-    c = big / 2
-    r = size * 0.075 * ss
-    ang = math.radians(heading if heading is not None else 0)
-    pts = []
-    for a_off, rad in ((0, r), (math.radians(140), r * 0.62),
-                       (math.radians(180), r * 0.28), (math.radians(220), r * 0.62)):
-        a = ang + a_off - math.pi / 2
-        pts.append((c + math.cos(a) * rad, c + math.sin(a) * rad))
-    md.polygon(pts, fill=spec["ramp"][-1] + (255,), outline=spec["ink"] + (255,))
-    out.alpha_composite(marker.resize((size, size), Image.LANCZOS))
+    return out
 
+
+# 玩家箭头。形状从游戏截图凸包拟合得到：等腰三角形，三顶点，无凹口。
+# 别拿抠图 PNG 的 15x11 当比例 —— 那是旋转后的外接矩形。
+# 前端 canvas 图层用的是同一组数值。
+MARKER_FILL = (0xF0, 0xF0, 0x20)
+MARKER_STROKE = (96, 86, 16)
+MARKER_BASE_RATIO = 0.050    # 底边 / 小地图直径
+MARKER_LENGTH_RATIO = 0.058  # 尖端到底边 / 小地图直径
+
+
+def draw_player_marker(img: Image.Image, heading: float = 0.0,
+                       scale: float = 1.7) -> Image.Image:
+    """把玩家箭头画到小地图上。预览不走这里（前端画），导出时才用。"""
+    size = img.width
+    ss = 4
+    big = size * ss
+    layer = Image.new("RGBA", (big, big), (0, 0, 0, 0))
+    d = ImageDraw.Draw(layer)
+
+    c = big / 2
+    half_b = MARKER_BASE_RATIO * scale * big / 2
+    half_l = MARKER_LENGTH_RATIO * scale * big / 2
+    pts = [(0, -half_l), (half_b, half_l), (-half_b, half_l)]
+    a = math.radians(heading)
+    rot = [(c + x * math.cos(a) - y * math.sin(a),
+            c + x * math.sin(a) + y * math.cos(a)) for x, y in pts]
+
+    d.polygon(rot, fill=MARKER_FILL + (255,),
+              outline=MARKER_STROKE + (140,), width=max(1, ss // 2))
+    out = img.copy()
+    out.alpha_composite(layer.resize((size, size), Image.LANCZOS))
     return out
 
 
 def render(lat: float, lon: float, zoom: int = 15, size: int = 420,
-           posterize: int = 4, heading: float | None = None,
-           palette: str | None = None) -> Image.Image:
+           posterize: int = 0, palette: str | None = None,
+           marker: bool = False, heading: float = 0.0,
+           marker_scale: float = 1.7) -> Image.Image:
     raw = fetch_area(lat, lon, zoom, size)
-    return round_frame(stylize(raw, posterize, palette), heading, palette)
+    out = round_frame(stylize(raw, posterize, palette), palette)
+    return draw_player_marker(out, heading, marker_scale) if marker else out

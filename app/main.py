@@ -135,12 +135,12 @@ def api_minimap(lat: float = Query(..., ge=-90, le=90),
                 lon: float = Query(..., ge=-180, le=180),
                 zoom: int = Query(15, ge=3, le=18),
                 size: int = Query(420, ge=120, le=900),
-                posterize: int = Query(4, ge=2, le=8),
-                heading: float = Query(0, ge=0, lt=360),
+                posterize: int = Query(0, ge=0, le=8),
                 palette: str = Query(minimap.DEFAULT_PALETTE)) -> Response:
+    """只出底图。玩家箭头由前端 canvas 图层画，拖朝向不用回服务器。"""
     try:
-        img = minimap.render(lat, lon, zoom=zoom, size=size, posterize=posterize,
-                             heading=heading, palette=palette)
+        img = minimap.render(lat, lon, zoom=zoom, size=size,
+                             posterize=posterize, palette=palette)
     except Exception as e:
         raise HTTPException(502, f"地图瓦片拉取失败：{e}")
 
