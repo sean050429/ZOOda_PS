@@ -1,4 +1,7 @@
-/* 照片上那个可拖动的圆形小地图。
+/* 照片上那个圆形小地图。
+ *
+ * 位置由 hud.js 按原作布局算好后写进 mapState，这里只负责渲染 ——
+ * 小地图不再支持手动拖动，摆哪儿完全跟随 HUD 布局。
  *
  * 位置和大小一律存成「占照片的比例」而不是像素：预览是缩放后的图，
  * 导出时要按原图尺寸重画，只有比例是两边通用的。
@@ -46,7 +49,6 @@ function ensureElement() {
   markerCanvas.className = 'minimap-marker';
   el.appendChild(markerCanvas);
   overlay.appendChild(el);
-  attachDrag(el);
   return el;
 }
 
@@ -60,37 +62,6 @@ function applyLayout() {
   el.style.left = `${mapState.x * w}px`;
   el.style.top = `${mapState.y * h}px`;
   drawMarker();
-}
-
-/* ---------------- 拖动 ---------------- */
-
-function attachDrag(node) {
-  let dragging = false;
-
-  node.addEventListener('pointerdown', (e) => {
-    dragging = true;
-    node.setPointerCapture(e.pointerId);
-    node.classList.add('is-dragging');
-    e.preventDefault();
-  });
-
-  node.addEventListener('pointermove', (e) => {
-    if (!dragging) return;
-    const rect = stage.getBoundingClientRect();
-    // 夹在照片范围内，别让小地图被拖到画面外面找不回来
-    mapState.x = clamp((e.clientX - rect.left) / rect.width, 0, 1);
-    mapState.y = clamp((e.clientY - rect.top) / rect.height, 0, 1);
-    applyLayout();
-  });
-
-  const stop = (e) => {
-    if (!dragging) return;
-    dragging = false;
-    node.classList.remove('is-dragging');
-    try { node.releasePointerCapture(e.pointerId); } catch {}
-  };
-  node.addEventListener('pointerup', stop);
-  node.addEventListener('pointercancel', stop);
 }
 
 function clamp(v, lo, hi) {

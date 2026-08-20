@@ -400,10 +400,8 @@ main {
 
 .minimap {
   position: absolute;
-  /* overlay 整体 pointer-events:none，这里要单独打开才能拖 */
-  pointer-events: auto;
-  cursor: grab;
-  touch-action: none;
+  /* 位置由布局决定，不接收鼠标事件 */
+  pointer-events: none;
   transform: translate(-50%, -50%);
   filter: drop-shadow(0 3px 10px rgba(0, 0, 0, 0.45));
   transition: opacity 0.15s;
@@ -417,7 +415,6 @@ main {
   -webkit-user-drag: none;
 }
 
-.minimap.is-dragging { cursor: grabbing; }
 .minimap.is-loading { opacity: 0.5; }
 
 /* ---------- 照片上的 HUD ---------- */
