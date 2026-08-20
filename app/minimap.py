@@ -344,11 +344,6 @@ MARKER_STROKE = (0x0E, 0x1A, 0x24)
 MARKER_P_RATIO = 0.0674       # pin.size / 小地图直径
 MARKER_STROKE_RATIO = 0.0067  # strokeWidth 1.2 / 178
 
-# 朝向扇形。参考里是偏冷的淡蓝，不是暖色
-SECTOR_HALF_ANGLE = 30
-SECTOR_COLOR = (150, 225, 255)
-SECTOR_ALPHA = 0.55
-
 
 def draw_player_marker(img: Image.Image, heading: float = 0.0,
                        scale: float = 1.0) -> Image.Image:
@@ -362,20 +357,6 @@ def draw_player_marker(img: Image.Image, heading: float = 0.0,
     c = big / 2
     a = math.radians(heading)
 
-    # 朝向扇形：从圆心向外渐隐。前端图层也画同一个，导出才不会和预览对不上
-    radius = big / 2
-    steps = 48
-    for i in range(steps, 0, -1):
-        t = i / steps
-        alpha = round(255 * SECTOR_ALPHA * (1 - t))
-        if alpha <= 0:
-            continue
-        r = radius * t
-        d.pieslice([c - r, c - r, c + r, c + r],
-                   math.degrees(a) - 90 - SECTOR_HALF_ANGLE,
-                   math.degrees(a) - 90 + SECTOR_HALF_ANGLE,
-                   fill=SECTOR_COLOR + (alpha,))
-
     p = MARKER_P_RATIO * big * max(0.1, scale)
     pts = [(0, -p), (p * 0.72, p * 0.8), (0, p * 0.4), (-p * 0.72, p * 0.8)]
     rot = [(c + x * math.cos(a) - y * math.sin(a),
@@ -383,10 +364,6 @@ def draw_player_marker(img: Image.Image, heading: float = 0.0,
 
     d.polygon(rot, fill=MARKER_FILL + (255,), outline=MARKER_STROKE + (255,),
               width=max(1, round(MARKER_STROKE_RATIO * big * max(0.1, scale))))
-    circle = Image.new("L", (big, big), 0)
-    ImageDraw.Draw(circle).ellipse([0, 0, big - 1, big - 1], fill=255)
-    layer.putalpha(ImageChops.multiply(layer.getchannel("A"), circle))
-
     out = img.copy()
     out.alpha_composite(layer.resize((size, size), Image.LANCZOS))
     return out

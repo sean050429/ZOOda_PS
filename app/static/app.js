@@ -36,10 +36,8 @@ const inClock = document.getElementById('in-clock');
 const mapPanel = document.getElementById('map-panel');
 const mapOn = document.getElementById('map-on');
 const mapStatus = document.getElementById('map-status');
-const sSize = document.getElementById('s-size');
 const sZoom = document.getElementById('s-zoom');
 const sPost = document.getElementById('s-post');
-const vSize = document.getElementById('v-size');
 const vZoom = document.getElementById('v-zoom');
 const vPost = document.getElementById('v-post');
 const sHeading = document.getElementById('s-heading');
@@ -296,8 +294,6 @@ function snapMinimapToLayout() {
   mapState.x = slot.x;
   mapState.y = slot.y;
   mapState.diameter = slot.diameter;
-  sSize.value = String(Math.round(slot.diameter * 100));
-  vSize.textContent = `${sSize.value}%`;
   refreshMap();
 }
 
@@ -427,13 +423,6 @@ mapOn.addEventListener('change', () => {
 });
 
 // 大小只改显示尺寸，不用重新拉瓦片；范围和色阶必须重画
-sSize.addEventListener('input', () => {
-  mapState.diameter = Number(sSize.value) / 100;
-  vSize.textContent = `${sSize.value}%`;
-  refreshMap({ redraw: false });
-});
-sSize.addEventListener('change', () => refreshMap());
-
 sZoom.addEventListener('input', () => {
   mapState.zoom = Number(sZoom.value);
   vZoom.textContent = `z${sZoom.value}`;

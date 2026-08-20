@@ -80,11 +80,6 @@ const MARKER_STROKE = '#0E1A24';
 const MARKER_P_RATIO = 0.0674;        // pin.size / 小地图直径
 const MARKER_STROKE_RATIO = 0.0067;   // strokeWidth 1.2 / 178
 
-// 朝向扇形：参考里是偏冷的淡蓝，不是暖色
-const SECTOR_HALF_ANGLE = 30;
-const SECTOR_COLOR = '150,225,255';
-const SECTOR_ALPHA = 0.55;
-
 export function drawMarker() {
   if (!markerCanvas || !el || el.hidden) return;
 
@@ -102,24 +97,6 @@ export function drawMarker() {
 
   const c = size / 2;
   const a = (mapState.heading || 0) * Math.PI / 180;
-
-  // 朝向扇形：从圆心向外渐隐，半径取满整个小地图
-  const half = SECTOR_HALF_ANGLE * Math.PI / 180;
-  const r = size / 2;
-  const g = ctx.createRadialGradient(c, c, 0, c, c, r);
-  g.addColorStop(0, `rgba(${SECTOR_COLOR},${SECTOR_ALPHA})`);
-  g.addColorStop(1, `rgba(${SECTOR_COLOR},0)`);
-  ctx.save();
-  ctx.beginPath();
-  ctx.arc(c, c, size / 2, 0, Math.PI * 2);
-  ctx.clip();
-  ctx.fillStyle = g;
-  ctx.beginPath();
-  ctx.moveTo(c, c);
-  ctx.arc(c, c, r, a - Math.PI / 2 - half, a - Math.PI / 2 + half);
-  ctx.closePath();
-  ctx.fill();
-  ctx.restore();
 
   // 箭头本体：四点箭形，尾部凹口。旋转原点就是玩家所在位置
   const k = mapState.markerScale || 1;
