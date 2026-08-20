@@ -335,17 +335,23 @@ def round_frame(img: Image.Image, palette: str | None = None) -> Image.Image:
     return out
 
 
-# 玩家箭头。形状从游戏截图凸包拟合得到：等腰三角形，三顶点，无凹口。
-# 别拿抠图 PNG 的 15x11 当比例 —— 那是旋转后的外接矩形。
-# 前端 canvas 图层用的是同一组数值。
-MARKER_FILL = (0xF0, 0xF0, 0x20)
-MARKER_STROKE = (96, 86, 16)
-MARKER_BASE_RATIO = 0.050    # 底边 / 小地图直径
-MARKER_LENGTH_RATIO = 0.058  # 尖端到底边 / 小地图直径
+# 玩家箭头。形状与配色照搬 Zelda_photo 的 botw 主题
+# （themes/botw/theme.json 的 slots.minimap.pin / .sector）：
+# 四点箭形，尾部带凹口。参考里 pin.size=12、minimap radius=89，
+# 所以 p 占直径 12/178 = 6.74%。前端 canvas 图层用的是同一组数值。
+MARKER_FILL = (0xFF, 0xE2, 0x4A)
+MARKER_STROKE = (0x0E, 0x1A, 0x24)
+MARKER_P_RATIO = 0.0674       # pin.size / 小地图直径
+MARKER_STROKE_RATIO = 0.0067  # strokeWidth 1.2 / 178
+
+# 朝向扇形。参考里是偏冷的淡蓝，不是暖色
+SECTOR_HALF_ANGLE = 30
+SECTOR_COLOR = (150, 225, 255)
+SECTOR_ALPHA = 0.55
 
 
 def draw_player_marker(img: Image.Image, heading: float = 0.0,
-                       scale: float = 1.7) -> Image.Image:
+                       scale: float = 1.0) -> Image.Image:
     """把玩家箭头画到小地图上。预览不走这里（前端画），导出时才用。"""
     size = img.width
     ss = 4
@@ -354,15 +360,33 @@ def draw_player_marker(img: Image.Image, heading: float = 0.0,
     d = ImageDraw.Draw(layer)
 
     c = big / 2
-    half_b = MARKER_BASE_RATIO * scale * big / 2
-    half_l = MARKER_LENGTH_RATIO * scale * big / 2
-    pts = [(0, -half_l), (half_b, half_l), (-half_b, half_l)]
     a = math.radians(heading)
+
+    # 朝向扇形：从圆心向外渐隐。前端图层也画同一个，导出才不会和预览对不上
+    radius = big / 2
+    steps = 48
+    for i in range(steps, 0, -1):
+        t = i / steps
+        alpha = round(255 * SECTOR_ALPHA * (1 - t))
+        if alpha <= 0:
+            continue
+        r = radius * t
+        d.pieslice([c - r, c - r, c + r, c + r],
+                   math.degrees(a) - 90 - SECTOR_HALF_ANGLE,
+                   math.degrees(a) - 90 + SECTOR_HALF_ANGLE,
+                   fill=SECTOR_COLOR + (alpha,))
+
+    p = MARKER_P_RATIO * big * max(0.1, scale)
+    pts = [(0, -p), (p * 0.72, p * 0.8), (0, p * 0.4), (-p * 0.72, p * 0.8)]
     rot = [(c + x * math.cos(a) - y * math.sin(a),
             c + x * math.sin(a) + y * math.cos(a)) for x, y in pts]
 
-    d.polygon(rot, fill=MARKER_FILL + (255,),
-              outline=MARKER_STROKE + (140,), width=max(1, ss // 2))
+    d.polygon(rot, fill=MARKER_FILL + (255,), outline=MARKER_STROKE + (255,),
+              width=max(1, round(MARKER_STROKE_RATIO * big * max(0.1, scale))))
+    circle = Image.new("L", (big, big), 0)
+    ImageDraw.Draw(circle).ellipse([0, 0, big - 1, big - 1], fill=255)
+    layer.putalpha(ImageChops.multiply(layer.getchannel("A"), circle))
+
     out = img.copy()
     out.alpha_composite(layer.resize((size, size), Image.LANCZOS))
     return out

@@ -525,9 +525,9 @@ resetBtn.addEventListener('click', () => {
   mapState.heading = 0;
   sHeading.value = '0';
   vHeading.textContent = '0°';
-  mapState.markerScale = 1.7;
-  sMarker.value = '170';
-  vMarker.textContent = '170%';
+  mapState.markerScale = 1;
+  sMarker.value = '100';
+  vMarker.textContent = '100%';
   drawMarker();
   mapState.lat = mapState.lon = null;
   refreshMap({ redraw: false });

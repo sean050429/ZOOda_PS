@@ -19,7 +19,7 @@ export const mapState = {
   posterize: 0,
   palette: 'botw',
   heading: 0,          // 中心箭头朝向，0 = 正上
-  markerScale: 1.7,    // 箭头缩放。1 = 游戏原始比例，照片上偏小，默认放大一些
+  markerScale: 1,      // 箭头缩放。1 = 参考主题的原始比例
   lat: null,
   lon: null,
 };
@@ -70,17 +70,20 @@ function clamp(v, lo, hi) {
 
 /* ---------------- 玩家箭头图层 ---------------- */
 
-// 形状是从游戏截图里凸包拟合量出来的：一个等腰三角形，三个顶点，
-// 没有尾部凹口（我一开始画成了四点箭形，错的）。
+// 形状与配色照搬 Zelda_photo 的 botw 主题（themes/botw/theme.json 的
+// slots.minimap.pin / .sector，路径见 core/minimap/index.js 的 drawPlayerMarker）：
+// 四点箭形，尾部带凹口。之前照游戏截图量成了纯三角，这里改回参考实现。
 //
-// 注意别拿抠图 PNG 的 15x11 当比例 —— 那是箭头旋转之后的外接矩形，
-// 和三角形本身的长宽没有关系。真实比例是底边 : 长 = 0.87，比想象中瘦。
-const MARKER_FILL = '#F0F020';
-const MARKER_STROKE = 'rgba(96,86,16,0.55)';
-// 这两个是游戏原始比例（scale = 1）。原始尺寸在小地图上只占 5%，
-// 贴到照片里偏小，所以默认放大 1.7 倍，可通过滑块调整。
-const MARKER_BASE_RATIO = 0.050;    // 底边 / 小地图直径
-const MARKER_LENGTH_RATIO = 0.058;  // 尖端到底边 / 小地图直径
+// 参考里 pin.size=12、minimap radius=89，所以 p 占直径 12/178 = 6.74%。
+const MARKER_FILL = '#FFE24A';
+const MARKER_STROKE = '#0E1A24';
+const MARKER_P_RATIO = 0.0674;        // pin.size / 小地图直径
+const MARKER_STROKE_RATIO = 0.0067;   // strokeWidth 1.2 / 178
+
+// 朝向扇形：参考里是偏冷的淡蓝，不是暖色
+const SECTOR_HALF_ANGLE = 30;
+const SECTOR_COLOR = '150,225,255';
+const SECTOR_ALPHA = 0.55;
 
 export function drawMarker() {
   if (!markerCanvas || !el || el.hidden) return;
@@ -100,12 +103,12 @@ export function drawMarker() {
   const c = size / 2;
   const a = (mapState.heading || 0) * Math.PI / 180;
 
-  // 朝向光锥：游戏里箭头前方有一小片亮区
-  const half = 26 * Math.PI / 180;
-  const r = size / 2 * 0.62;
+  // 朝向扇形：从圆心向外渐隐，半径取满整个小地图
+  const half = SECTOR_HALF_ANGLE * Math.PI / 180;
+  const r = size / 2;
   const g = ctx.createRadialGradient(c, c, 0, c, c, r);
-  g.addColorStop(0, 'rgba(255,246,170,0.30)');
-  g.addColorStop(1, 'rgba(255,246,170,0)');
+  g.addColorStop(0, `rgba(${SECTOR_COLOR},${SECTOR_ALPHA})`);
+  g.addColorStop(1, `rgba(${SECTOR_COLOR},0)`);
   ctx.save();
   ctx.beginPath();
   ctx.arc(c, c, size / 2, 0, Math.PI * 2);
@@ -118,21 +121,21 @@ export function drawMarker() {
   ctx.fill();
   ctx.restore();
 
-  // 箭头本体：等腰三角形，包围盒中心对准小地图中心
+  // 箭头本体：四点箭形，尾部凹口。旋转原点就是玩家所在位置
   const k = mapState.markerScale || 1;
-  const halfB = MARKER_BASE_RATIO * k * size / 2;
-  const halfL = MARKER_LENGTH_RATIO * k * size / 2;
+  const p = MARKER_P_RATIO * size * k;
   ctx.save();
   ctx.translate(c, c);
   ctx.rotate(a);
   ctx.beginPath();
-  ctx.moveTo(0, -halfL);        // 尖端
-  ctx.lineTo(halfB, halfL);     // 底边右角
-  ctx.lineTo(-halfB, halfL);    // 底边左角
+  ctx.moveTo(0, -p);              // 尖端
+  ctx.lineTo(p * 0.72, p * 0.8);  // 右翼
+  ctx.lineTo(0, p * 0.4);         // 尾部凹口
+  ctx.lineTo(-p * 0.72, p * 0.8); // 左翼
   ctx.closePath();
   ctx.fillStyle = MARKER_FILL;
   ctx.fill();
-  ctx.lineWidth = Math.max(1, size * 0.003);
+  ctx.lineWidth = Math.max(1, MARKER_STROKE_RATIO * size * k);
   ctx.strokeStyle = MARKER_STROKE;
   ctx.stroke();
   ctx.restore();
