@@ -21,6 +21,7 @@ const chipsEl = document.getElementById('name-chips');
 const qInput = document.getElementById('q');
 const qGo = document.getElementById('q-go');
 const qResults = document.getElementById('q-results');
+const restoreBtn = document.getElementById('restore');
 
 const bannerPanel = document.getElementById('banner-panel');
 const bannerOn = document.getElementById('banner-on');
@@ -219,6 +220,7 @@ function syncPlace(ctx = null, { skipNameResolve = false } = {}) {
     source: ctx && ctx.has_gps && lat === ctx.lat && lon === ctx.lon ? 'exif' : 'manual',
   };
 
+  updateBadge(ctx);
   renderNote(ctx, { latBad, lonBad });
 
   mapState.lat = place.lat;
@@ -231,6 +233,30 @@ function syncPlace(ctx = null, { skipNameResolve = false } = {}) {
     resolveNameSoon(place.lat, place.lon);
   }
   if (moved || place.takenAt !== prevTakenAt) loadWeatherSoon();
+}
+
+/* 徽章要跟着当前值走。原来只在上传时设一次，结果坐标改到别处了
+ * 还显示「来自照片」—— 明明已经不是照片记录的位置了。 */
+function updateBadge(ctx) {
+  const hasPhotoData = Boolean(ctx?.has_gps || ctx?.taken_at);
+  if (!hasPhotoData) {
+    sourceBadge.textContent = '需要手动填写';
+    sourceBadge.className = 'badge is-manual';
+    return;
+  }
+  const sameSpot = ctx.has_gps && place.lat === ctx.lat && place.lon === ctx.lon;
+  const sameTime = (timeInput.value || null) === (ctx.taken_at?.slice(0, 19) || null);
+
+  if (sameSpot && sameTime) {
+    sourceBadge.textContent = '来自照片';
+    sourceBadge.className = 'badge is-exif';
+  } else if (sameSpot || sameTime) {
+    sourceBadge.textContent = '部分已改';
+    sourceBadge.className = 'badge is-manual';
+  } else {
+    sourceBadge.textContent = '已手动调整';
+    sourceBadge.className = 'badge is-manual';
+  }
 }
 
 function renderNote(ctx, { latBad, lonBad }) {
@@ -267,18 +293,9 @@ function fillContext(ctx) {
   nameInput.value = '';
   nameTouchedByUser = false;
   chipsEl.innerHTML = '';
+  syncBanner();
 
-  const hasTime = Boolean(ctx.taken_at);
-  if (ctx.has_gps && hasTime) {
-    sourceBadge.textContent = '来自照片';
-    sourceBadge.className = 'badge is-exif';
-  } else if (ctx.has_gps || hasTime) {
-    sourceBadge.textContent = '照片信息不全';
-    sourceBadge.className = 'badge is-manual';
-  } else {
-    sourceBadge.textContent = '需要手动填写';
-    sourceBadge.className = 'badge is-manual';
-  }
+  restoreBtn.hidden = !(ctx.has_gps || ctx.taken_at);
 
   syncPlace(ctx);
   if (ctx.has_gps) resolveName(ctx.lat, ctx.lon);
@@ -454,6 +471,16 @@ function syncBanner() {
   hudState.bannerText = nameInput.value || '';
   paintHud();
 }
+
+/* 改过坐标之后要能退回照片自带的那份。fillContext 干的正是这件事，
+ * 直接复用 —— 它会一并重置徽章、清掉手改标记并重新解析地名，
+ * 后续的小地图、天气、标题都由 syncPlace 连锁触发。 */
+restoreBtn.addEventListener('click', () => {
+  if (!current?.context) return;
+  qResults.hidden = true;
+  qInput.value = '';
+  fillContext(current.context);
+});
 
 qGo.addEventListener('click', runSearch);
 qInput.addEventListener('keydown', (e) => {
