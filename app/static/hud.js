@@ -26,8 +26,10 @@ export const hudState = {
   bannerOn: true,
   bannerText: '',
   bannerScale: 1,
-  bannerX: 0.5,      // 占照片宽的比例，0.5 = 居中
-  bannerY: 0.135,    // 占照片高的比例，取自参考主题的 banner.anchor
+  // 左下角。X 是左边缘位置，不是中心 —— 4% 与左上角那组 HUD 的左边距对齐
+  // （原作 top_left 组 bbox 从 x=76 起，76/1920 ≈ 0.0396）
+  bannerX: 0.04,
+  bannerY: 0.88,
 };
 
 let layout = null;
@@ -156,9 +158,10 @@ function renderBanner(scale) {
   root.appendChild(node);
 
   // 长地名配大字号会横着跑出画面（「稻城亚丁国家级自然保护区」在 200%
-  // 时宽度到 108%，两边各溢出 52px）。这里量一次实际宽度，超了就等比缩，
-  // 字号和字间距一起缩，字距比例才不会走样。
-  const limit = stage.clientWidth * 0.92;
+  // 时宽度到 108%）。这里量一次实际宽度，超了就等比缩，字号和字间距
+  // 一起缩，字距比例才不会走样。
+  // 上限按左边缘右侧的剩余宽度算，不是整幅宽度 —— 靠右摆时可用空间更少。
+  const limit = stage.clientWidth * (1 - hudState.bannerX) * 0.94;
   const actual = node.getBoundingClientRect().width;
   if (actual > limit) {
     const shrink = limit / actual;
