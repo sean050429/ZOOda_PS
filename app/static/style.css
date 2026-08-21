@@ -42,7 +42,7 @@ body {
 }
 
 main {
-  max-width: 1000px;
+  max-width: 1500px;
   margin: 0 auto;
   padding: 32px 24px 64px;
 }
@@ -100,7 +100,37 @@ main {
 
 /* ---------- 工作区 ---------- */
 
-.workspace { margin-top: 28px; }
+.workspace {
+  display: grid;
+  /* 左边照片吃掉剩余宽度，右边控件固定一栏。minmax(0,1fr) 里那个 0
+     是必须的：默认 min-width:auto 会让照片把栅格顶宽，右栏被挤出去 */
+  grid-template-columns: minmax(0, 1fr) 400px;
+  gap: 24px;
+  align-items: start;
+  margin-top: 28px;
+}
+
+/* 照片钉住，滚右边控件时它一直可见 —— 否则调滑块看不到效果 */
+.workspace-photo {
+  position: sticky;
+  top: 20px;
+}
+
+.workspace-panels {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-width: 0;
+}
+
+/* 右栏里第一块面板不用再顶一段外边距 */
+.workspace-panels > .panel:first-child { margin-top: 0; }
+
+@media (max-width: 1180px) {
+  .workspace { grid-template-columns: 1fr; }
+  .workspace-photo { position: static; }
+  .stage img { max-height: 52vh; }
+}
 
 .stage-wrap {
   display: flex;
@@ -121,7 +151,7 @@ main {
 .stage img {
   display: block;
   max-width: 100%;
-  max-height: 52vh;
+  max-height: calc(100vh - 190px);
   width: auto;
   height: auto;
 }

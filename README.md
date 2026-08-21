@@ -33,7 +33,7 @@ python3 -m venv .venv
 ./.venv/bin/uvicorn app.main:app --reload --port 8000
 ```
 
-打开 <http://localhost:8000>。
+打开 <http://localhost:8000>。界面是左右两栏：左边只放照片，所有调节控件都在右边；窗口窄于 1180px 时自动改成上下排列。
 
 首次生成小地图需要 3~6 秒下载地图瓦片，之后同一区域走本地缓存，约 0.1 秒。
 
