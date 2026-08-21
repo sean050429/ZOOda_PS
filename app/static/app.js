@@ -1,5 +1,6 @@
 import { mapState, refresh as refreshMap, onMapStatus, drawMarker } from '/minimap.js';
 import { hudState, loadLayout, renderHud, minimapSlot } from '/hud.js';
+import { exportPhoto } from '/exporter.js';
 
 const dropzone = document.getElementById('dropzone');
 const fileInput = document.getElementById('file-input');
@@ -579,6 +580,27 @@ inClock.addEventListener('input', () => {
   paintHud();
 });
 
+const exportBtn = document.getElementById('export');
+const exportStatus = document.getElementById('export-status');
+
+exportBtn.addEventListener('click', async () => {
+  if (!current) return;
+  exportBtn.disabled = true;
+  exportStatus.className = 'ctx-note';
+  exportStatus.textContent = '正在按原图分辨率合成…';
+  try {
+    const name = (place.name || '照片').replace(/[\\/:*?"<>|]/g, '_');
+    const r = await exportPhoto(current.id, `${name}.png`);
+    exportStatus.textContent =
+      `已导出 ${r.width}×${r.height}，${(r.bytes / 1048576).toFixed(1)} MB`;
+  } catch (err) {
+    exportStatus.className = 'ctx-note is-error';
+    exportStatus.textContent = `导出失败：${err.message}`;
+  } finally {
+    exportBtn.disabled = false;
+  }
+});
+
 resetBtn.addEventListener('click', () => {
   current = null;
   place = { lat: null, lon: null, takenAt: null, name: null, source: 'manual' };
@@ -608,4 +630,5 @@ resetBtn.addEventListener('click', () => {
   mapState.lat = mapState.lon = null;
   refreshMap({ redraw: false });
   setStatus('');
+  exportStatus.textContent = '';
 });

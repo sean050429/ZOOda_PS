@@ -388,3 +388,247 @@ export function minimapSlot() {
 }
 
 window.addEventListener('resize', () => renderHud());
+
+/* ---------------- 导出：把同一套 HUD 画到画布上 ---------------- */
+
+/* 预览走 DOM、导出走画布，两条路径共用上面的 place()、常量和 hudState，
+ * 只有绘制调用不同 —— 位置、配色、比例这些容易出错的东西只有一份。 */
+
+const BANNER_FONT_STACK =
+  '"Songti SC", "STSong", "Hiragino Mincho ProN", "Noto Serif SC", "PT Serif", serif';
+const UI_FONT_STACK =
+  '"Trebuchet MS", "Hiragino Sans GB", "PingFang SC", system-ui, sans-serif';
+
+function loadImage(src) {
+  return new Promise((resolve, reject) => {
+    const im = new Image();
+    im.onload = () => resolve(im);
+    im.onerror = () => reject(new Error(`图片加载失败: ${src}`));
+    im.src = src;
+  });
+}
+
+/** 把一张圆盘按黑底规则处理好，返回可直接 drawImage 的画布。 */
+function blackenDiskToCanvas(img, px) {
+  const cv = document.createElement('canvas');
+  cv.width = px;
+  cv.height = px;
+  const ctx = cv.getContext('2d');
+  ctx.drawImage(img, 0, 0, px, px);
+  const data = ctx.getImageData(0, 0, px, px);
+  const d = data.data;
+  const bg = dominantColor(d);
+  for (let i = 0; i < d.length; i += 4) {
+    if (d[i + 3] === 0) continue;
+    for (let k = 0; k < 3; k++) {
+      const v = (d[i + k] - bg[k]) * DISK_GAIN + DISK_FLOOR[k];
+      d[i + k] = v < 0 ? 0 : v > 255 ? 255 : v;
+    }
+  }
+  ctx.putImageData(data, 0, 0);
+  return cv;
+}
+
+function drawDial(ctx, pos, px) {
+  const t = hudState.temperature;
+  if (t === null || t === undefined) return;
+  const c = px / 2;
+
+  const cv = document.createElement('canvas');
+  cv.width = px;
+  cv.height = px;
+  const g = cv.getContext('2d');
+
+  g.beginPath();
+  g.arc(c, c, c * 0.60, 0, Math.PI * 2);
+  g.fillStyle = DIAL_INNER;
+  g.fill();
+
+  const a = ((tempToAngle(t) - 90) * Math.PI) / 180;
+  g.strokeStyle = DIAL_NEEDLE;
+  g.lineCap = 'round';
+  g.lineWidth = px * 0.07;
+  g.beginPath();
+  g.moveTo(c, c);
+  g.lineTo(c + Math.cos(a) * c * 0.46, c + Math.sin(a) * c * 0.46);
+  g.stroke();
+  g.beginPath();
+  g.arc(c, c, px * 0.07, 0, Math.PI * 2);
+  g.fillStyle = DIAL_NEEDLE;
+  g.fill();
+
+  const label = `${Math.round(t)}°`;
+  const coverR = c * 0.60;
+  const baselineY = px * 0.17;
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  let fontPx = px * 0.22;
+  for (let i = 0; i < 12; i++) {
+    g.font = `700 ${fontPx}px ${UI_FONT_STACK}`;
+    const halfW = g.measureText(label).width / 2;
+    const halfH = fontPx * 0.42;
+    if (Math.hypot(halfW, baselineY + halfH) <= coverR * 0.94) break;
+    fontPx *= 0.9;
+  }
+  g.fillStyle = DIAL_NEEDLE;
+  g.fillText(label, c, c + baselineY);
+
+  ctx.drawImage(cv, pos.left ?? 0, pos.top ?? 0, pos.w, pos.h);
+}
+
+/** 画布版的文字描边阴影，对应 CSS 里的 text-shadow */
+function withShadow(ctx, blur, alpha, dy, fn) {
+  ctx.save();
+  ctx.shadowColor = `rgba(0,0,0,${alpha})`;
+  ctx.shadowBlur = blur;
+  ctx.shadowOffsetY = dy;
+  fn();
+  ctx.restore();
+}
+
+/**
+ * 按给定尺寸把整套 HUD 画到 ctx 上。
+ * @param {number} width  目标画布宽（通常是原图宽）
+ * @param {number} height 目标画布高
+ */
+export async function drawHudOnCanvas(ctx, width, height) {
+  if (!layout || !hudState.enabled) return;
+  const scale = (width / CANVAS_W) * hudState.scale;
+
+  // place() 是按右下角给 right/bottom 的，画布上要换成左上角坐标
+  const toXY = (pos) => ({
+    x: pos.left !== undefined ? pos.left : width - pos.right - pos.w,
+    y: pos.top !== undefined ? pos.top : height - pos.bottom - pos.h,
+  });
+
+  for (const el of layout.elements) {
+    if (REPLACED.has(el.id)) continue;
+    if (el.id.startsWith('dpad_') && el.id !== 'dpad_cluster') continue;
+    const src = el.assets?.png_x8 || el.assets?.png;
+    if (!src) continue;
+
+    const pos = place(el.box, el.anchor, scale);
+    const { x, y } = toXY(pos);
+    const img = await loadImage(`/ui_source/${src}`);
+
+    if (el.id.startsWith('disk_')) {
+      const px = Math.max(24, Math.round(pos.w));
+      ctx.drawImage(blackenDiskToCanvas(img, px), x, y, pos.w, pos.h);
+      if (el.id === 'disk_temperature') {
+        drawDial(ctx, { left: x, top: y, w: pos.w, h: pos.h }, px);
+      }
+      continue;
+    }
+    ctx.drawImage(img, x, y, pos.w, pos.h);
+  }
+
+  await drawBannerOn(ctx, scale, width, height);
+  await drawHeartsOn(ctx, scale, toXY);
+  drawClockOn(ctx, scale, toXY);
+  drawWeatherOn(ctx, scale, toXY);
+}
+
+async function drawBannerOn(ctx, scale, width, height) {
+  if (!hudState.bannerOn) return;
+  const text = (hudState.bannerText || '').trim();
+  if (!text) return;
+
+  const k = scale * (CANVAS_W / BANNER_REF_W) * hudState.bannerScale;
+  let fontPx = BANNER_FONT * k;
+  let tracking = BANNER_TRACKING * k;
+
+  const measure = () => {
+    ctx.font = `600 ${fontPx}px ${BANNER_FONT_STACK}`;
+    ctx.letterSpacing = `${tracking}px`;
+    return ctx.measureText(text).width;
+  };
+  // 和预览一样：超出左边缘右侧的可用宽度就等比缩
+  const limit = width * (1 - hudState.bannerX) * 0.94;
+  if (measure() > limit) {
+    const shrink = limit / measure();
+    fontPx *= shrink;
+    tracking *= shrink;
+    measure();
+  }
+
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#FFFFFF';
+  withShadow(ctx, fontPx * 0.5, 0.45, 0, () => {
+    withShadow(ctx, 3 * k, 0.8, 1 * k, () => {
+      ctx.fillText(text, hudState.bannerX * width, hudState.bannerY * height);
+    });
+  });
+  ctx.letterSpacing = '0px';
+}
+
+async function drawHeartsOn(ctx, scale, toXY) {
+  const full = byId('heart_full');
+  const empty = byId('heart_empty');
+  const row = byId('hearts_row');
+  if (!full || !row) return;
+
+  const fullImg = await loadImage(`/ui_source/${full.assets.png_x8 || full.assets.png}`);
+  const emptyImg = empty
+    ? await loadImage(`/ui_source/${empty.assets.png_x8 || empty.assets.png}`)
+    : fullImg;
+
+  for (let i = 0; i < hudState.hearts; i++) {
+    const isFull = i < hudState.heartsFull;
+    const spec = isFull ? full : (empty || full);
+    const box = { ...spec.box, x: row.box.x + i * 30, y: row.box.y };
+    const pos = place(box, 'top-left', scale);
+    const { x, y } = toXY(pos);
+    ctx.drawImage(isFull ? fullImg : emptyImg, x, y, pos.w, pos.h);
+  }
+}
+
+function drawClockOn(ctx, scale, toXY) {
+  const spec = byId('clock_text');
+  if (!spec) return;
+  const pos = place(spec.box, spec.anchor, scale);
+  const { x, y } = toXY(pos);
+  ctx.font = `600 ${pos.h * 1.15}px ${UI_FONT_STACK}`;
+  ctx.letterSpacing = `${pos.h * 0.06}px`;
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#F6F0D8';
+  withShadow(ctx, 3 * scale * 4, 0.75, scale * 4, () => {
+    ctx.fillText(hudState.clockText, x, y + pos.h / 2);
+  });
+  ctx.letterSpacing = '0px';
+}
+
+function drawWeatherOn(ctx, scale, toXY) {
+  const spec = byId('weather_bar');
+  if (!spec) return;
+  const pos = place(spec.box, spec.anchor, scale);
+  const h = pos.h;
+  const fontPx = h * 0.46;
+  const padX = h * 1.05;
+
+  ctx.font = `600 ${fontPx}px ${UI_FONT_STACK}`;
+  ctx.letterSpacing = `${fontPx * 0.1}px`;
+  const textW = ctx.measureText(hudState.weatherText).width;
+  const w = textW + padX * 2;
+
+  // 预览里胶囊宽度自适应、右边缘跟着 place() 的 right 走
+  const { y } = toXY(pos);
+  const right = pos.right !== undefined
+    ? ctx.canvas.width - pos.right
+    : (pos.left ?? 0) + pos.w;
+  const x = right - w;
+
+  ctx.beginPath();
+  ctx.roundRect(x, y, w, h, h / 2);
+  ctx.fillStyle = 'rgba(12,14,16,0.82)';
+  ctx.fill();
+
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#5FC8F0';
+  withShadow(ctx, 2 * scale * 4, 0.6, scale * 4, () => {
+    ctx.fillText(hudState.weatherText, x + w / 2, y + h / 2);
+  });
+  ctx.letterSpacing = '0px';
+}
