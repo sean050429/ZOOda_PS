@@ -12,3 +12,6 @@ output/
 #   ui_source/ 游戏截图，仅作风格参考，是任天堂的版权素材
 test/
 ui_source/
+
+# 由 scripts/fetch_font.py 抓取，不进版本库
+app/static/fonts/
