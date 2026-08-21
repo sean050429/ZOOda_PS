@@ -28,188 +28,193 @@
     <p id="status" class="status" hidden></p>
 
     <section id="workspace" class="workspace" hidden>
-      <div class="stage-wrap">
-        <div id="stage" class="stage">
-          <img id="photo" alt="上传的照片">
-          <!-- 后续步骤的小地图 / 标题 / 状态栏 / 心心都挂进这一层 -->
-          <div id="overlay" class="overlay"></div>
-        </div>
-      </div>
-
-      <section class="panel">
-        <div class="panel-head">
-          <h2>地点与时间</h2>
-          <span id="ctx-source" class="badge"></span>
-        </div>
-        <p class="panel-hint">小地图、地名和天气都依据这里的值生成，可以随时改。</p>
-
-        <div class="fields">
-          <label class="field">
-            <span>纬度</span>
-            <input id="in-lat" type="number" step="any" min="-90" max="90" placeholder="35.6586">
-          </label>
-          <label class="field">
-            <span>经度</span>
-            <input id="in-lon" type="number" step="any" min="-180" max="180" placeholder="139.7454">
-          </label>
-          <label class="field field-wide">
-            <span>拍摄时间</span>
-            <input id="in-time" type="datetime-local" step="1">
-          </label>
-        </div>
-
-        <div class="nudge">
-          <span class="nudge-label">微调位置</span>
-          <div class="nudge-pad">
-            <button class="nudge-btn" data-dir="N" type="button">北</button>
-            <button class="nudge-btn" data-dir="W" type="button">西</button>
-            <label class="nudge-step">
-              <input id="nudge-m" type="number" min="1" max="100000" step="1" value="50">
-              <span>米</span>
-            </label>
-            <button class="nudge-btn" data-dir="E" type="button">东</button>
-            <button class="nudge-btn" data-dir="S" type="button">南</button>
+      <div class="workspace-photo">
+        <div class="stage-wrap">
+          <div id="stage" class="stage">
+            <img id="photo" alt="上传的照片">
+            <!-- 后续步骤的小地图 / 标题 / 状态栏 / 心心都挂进这一层 -->
+            <div id="overlay" class="overlay"></div>
           </div>
-          <span id="nudge-info" class="nudge-info"></span>
         </div>
-
-        <div class="search-row">
-          <input id="q" type="search" placeholder="或直接搜地名，例如「稻城亚丁」">
-          <button id="q-go" class="btn btn-sm" type="button">搜索</button>
-          <button id="restore" class="btn btn-sm" type="button" hidden>回到照片位置</button>
-        </div>
-        <ul id="q-results" class="results" hidden></ul>
-
-        <div class="fields fields-name">
-          <label class="field field-wide">
-            <span>地名</span>
-            <input id="in-name" type="text" placeholder="填了坐标后自动解析">
-          </label>
-        </div>
-        <div id="name-chips" class="chips"></div>
-
-        <p id="ctx-note" class="ctx-note"></p>
-      </section>
-
-      <section class="panel" id="map-panel" hidden>
-        <div class="panel-head">
-          <h2>小地图</h2>
-          <label class="toggle">
-            <input id="map-on" type="checkbox" checked>
-            <span>显示</span>
-          </label>
-        </div>
-        <p class="panel-hint">位置和大小跟随下面的 HUD 布局，观感在这里调。</p>
-
-        <div class="sliders">
-          <label class="slider">
-            <span>范围 <b id="v-zoom">z15</b></span>
-            <input id="s-zoom" type="range" min="9" max="18" value="15">
-          </label>
-          <label class="slider">
-            <span>色阶 <b id="v-post">关</b></span>
-            <input id="s-post" type="range" min="0" max="8" value="0">
-          </label>
-        </div>
-
-        <div class="sliders">
-          <label class="slider">
-            <span>箭头朝向 <b id="v-heading">0°</b></span>
-            <input id="s-heading" type="range" min="0" max="355" step="5" value="0">
-          </label>
-          <label class="slider">
-            <span>箭头大小 <b id="v-marker">100%</b></span>
-            <input id="s-marker" type="range" min="60" max="320" step="10" value="100">
-          </label>
-          <label class="slider">
-            <span>配色</span>
-            <select id="sel-palette" class="select"></select>
-          </label>
-        </div>
-
-        <p id="map-status" class="ctx-note"></p>
-      </section>
-
-      <section class="panel" id="hud-panel" hidden>
-        <div class="panel-head">
-          <h2>整套 HUD</h2>
-          <label class="toggle">
-            <input id="hud-on" type="checkbox" checked>
-            <span>显示</span>
-          </label>
-        </div>
-        <p class="panel-hint">
-          按游戏原作的布局摆放：血条在左上，希卡圆盘、时间天气、小地图在右下。
-          天气自动查拍摄当时的实况，温度显示在温度表盘上。
-        </p>
-
-        <div class="sliders">
-          <label class="slider">
-            <span>整体大小 <b id="v-hud-scale">100%</b></span>
-            <input id="s-hud-scale" type="range" min="40" max="200" value="100">
-          </label>
-          <label class="slider">
-            <span>心心总数 <b id="v-hearts">12</b></span>
-            <input id="s-hearts" type="range" min="3" max="30" value="12">
-          </label>
-          <label class="slider">
-            <span>剩余心心 <b id="v-hearts-full">11</b></span>
-            <input id="s-hearts-full" type="range" min="0" max="30" value="11">
-          </label>
-        </div>
-
-        <div class="fields fields-name">
-          <label class="field">
-            <span>天气文字</span>
-            <input id="in-weather" type="text" value="晴">
-          </label>
-          <label class="field">
-            <span>时间</span>
-            <input id="in-clock" type="text" value="13:35">
-          </label>
-        </div>
-
-        <p id="hud-status" class="ctx-note"></p>
-      </section>
-
-      <section class="panel" id="banner-panel" hidden>
-        <div class="panel-head">
-          <h2>地名标题</h2>
-          <label class="toggle">
-            <input id="banner-on" type="checkbox" checked>
-            <span>显示</span>
-          </label>
-        </div>
-        <p class="panel-hint">
-          文字取自上面的「地名」，改那里即可。默认摆在左下角，字号照搬原作。
-        </p>
-
-        <div class="sliders">
-          <label class="slider">
-            <span>大小 <b id="v-banner-size">100%</b></span>
-            <input id="s-banner-size" type="range" min="40" max="260" step="5" value="100">
-          </label>
-          <label class="slider">
-            <span>左边距 <b id="v-banner-x">4%</b></span>
-            <input id="s-banner-x" type="range" min="0" max="90" step="0.5" value="4">
-          </label>
-          <label class="slider">
-            <span>垂直位置 <b id="v-banner-y">88%</b></span>
-            <input id="s-banner-y" type="range" min="0" max="100" step="0.5" value="88">
-          </label>
-        </div>
-      </section>
-
-      <details class="raw">
-        <summary>照片信息</summary>
-        <dl id="meta" class="meta"></dl>
-      </details>
-
-      <div class="actions">
-        <button id="export" class="btn btn-primary" type="button">导出成品 PNG</button>
-        <button id="reset" class="btn" type="button">换一张</button>
       </div>
-      <p id="export-status" class="ctx-note"></p>
+
+      <aside class="workspace-panels">
+
+        <section class="panel">
+          <div class="panel-head">
+            <h2>地点与时间</h2>
+            <span id="ctx-source" class="badge"></span>
+          </div>
+          <p class="panel-hint">小地图、地名和天气都依据这里的值生成，可以随时改。</p>
+
+          <div class="fields">
+            <label class="field">
+              <span>纬度</span>
+              <input id="in-lat" type="number" step="any" min="-90" max="90" placeholder="35.6586">
+            </label>
+            <label class="field">
+              <span>经度</span>
+              <input id="in-lon" type="number" step="any" min="-180" max="180" placeholder="139.7454">
+            </label>
+            <label class="field field-wide">
+              <span>拍摄时间</span>
+              <input id="in-time" type="datetime-local" step="1">
+            </label>
+          </div>
+
+          <div class="nudge">
+            <span class="nudge-label">微调位置</span>
+            <div class="nudge-pad">
+              <button class="nudge-btn" data-dir="N" type="button">北</button>
+              <button class="nudge-btn" data-dir="W" type="button">西</button>
+              <label class="nudge-step">
+                <input id="nudge-m" type="number" min="1" max="100000" step="1" value="50">
+                <span>米</span>
+              </label>
+              <button class="nudge-btn" data-dir="E" type="button">东</button>
+              <button class="nudge-btn" data-dir="S" type="button">南</button>
+            </div>
+            <span id="nudge-info" class="nudge-info"></span>
+          </div>
+
+          <div class="search-row">
+            <input id="q" type="search" placeholder="或直接搜地名，例如「稻城亚丁」">
+            <button id="q-go" class="btn btn-sm" type="button">搜索</button>
+            <button id="restore" class="btn btn-sm" type="button" hidden>回到照片位置</button>
+          </div>
+          <ul id="q-results" class="results" hidden></ul>
+
+          <div class="fields fields-name">
+            <label class="field field-wide">
+              <span>地名</span>
+              <input id="in-name" type="text" placeholder="填了坐标后自动解析">
+            </label>
+          </div>
+          <div id="name-chips" class="chips"></div>
+
+          <p id="ctx-note" class="ctx-note"></p>
+        </section>
+
+        <section class="panel" id="map-panel" hidden>
+          <div class="panel-head">
+            <h2>小地图</h2>
+            <label class="toggle">
+              <input id="map-on" type="checkbox" checked>
+              <span>显示</span>
+            </label>
+          </div>
+          <p class="panel-hint">位置和大小跟随下面的 HUD 布局，观感在这里调。</p>
+
+          <div class="sliders">
+            <label class="slider">
+              <span>范围 <b id="v-zoom">z15</b></span>
+              <input id="s-zoom" type="range" min="9" max="18" value="15">
+            </label>
+            <label class="slider">
+              <span>色阶 <b id="v-post">关</b></span>
+              <input id="s-post" type="range" min="0" max="8" value="0">
+            </label>
+          </div>
+
+          <div class="sliders">
+            <label class="slider">
+              <span>箭头朝向 <b id="v-heading">0°</b></span>
+              <input id="s-heading" type="range" min="0" max="355" step="5" value="0">
+            </label>
+            <label class="slider">
+              <span>箭头大小 <b id="v-marker">100%</b></span>
+              <input id="s-marker" type="range" min="60" max="320" step="10" value="100">
+            </label>
+            <label class="slider">
+              <span>配色</span>
+              <select id="sel-palette" class="select"></select>
+            </label>
+          </div>
+
+          <p id="map-status" class="ctx-note"></p>
+        </section>
+
+        <section class="panel" id="hud-panel" hidden>
+          <div class="panel-head">
+            <h2>整套 HUD</h2>
+            <label class="toggle">
+              <input id="hud-on" type="checkbox" checked>
+              <span>显示</span>
+            </label>
+          </div>
+          <p class="panel-hint">
+            按游戏原作的布局摆放：血条在左上，希卡圆盘、时间天气、小地图在右下。
+            天气自动查拍摄当时的实况，温度显示在温度表盘上。
+          </p>
+
+          <div class="sliders">
+            <label class="slider">
+              <span>整体大小 <b id="v-hud-scale">100%</b></span>
+              <input id="s-hud-scale" type="range" min="40" max="200" value="100">
+            </label>
+            <label class="slider">
+              <span>心心总数 <b id="v-hearts">12</b></span>
+              <input id="s-hearts" type="range" min="3" max="30" value="12">
+            </label>
+            <label class="slider">
+              <span>剩余心心 <b id="v-hearts-full">11</b></span>
+              <input id="s-hearts-full" type="range" min="0" max="30" value="11">
+            </label>
+          </div>
+
+          <div class="fields fields-name">
+            <label class="field">
+              <span>天气文字</span>
+              <input id="in-weather" type="text" value="晴">
+            </label>
+            <label class="field">
+              <span>时间</span>
+              <input id="in-clock" type="text" value="13:35">
+            </label>
+          </div>
+
+          <p id="hud-status" class="ctx-note"></p>
+        </section>
+
+        <section class="panel" id="banner-panel" hidden>
+          <div class="panel-head">
+            <h2>地名标题</h2>
+            <label class="toggle">
+              <input id="banner-on" type="checkbox" checked>
+              <span>显示</span>
+            </label>
+          </div>
+          <p class="panel-hint">
+            文字取自上面的「地名」，改那里即可。默认摆在左下角，字号照搬原作。
+          </p>
+
+          <div class="sliders">
+            <label class="slider">
+              <span>大小 <b id="v-banner-size">100%</b></span>
+              <input id="s-banner-size" type="range" min="40" max="260" step="5" value="100">
+            </label>
+            <label class="slider">
+              <span>左边距 <b id="v-banner-x">4%</b></span>
+              <input id="s-banner-x" type="range" min="0" max="90" step="0.5" value="4">
+            </label>
+            <label class="slider">
+              <span>垂直位置 <b id="v-banner-y">88%</b></span>
+              <input id="s-banner-y" type="range" min="0" max="100" step="0.5" value="88">
+            </label>
+          </div>
+        </section>
+
+        <details class="raw">
+          <summary>照片信息</summary>
+          <dl id="meta" class="meta"></dl>
+        </details>
+
+        <div class="actions">
+          <button id="export" class="btn btn-primary" type="button">导出成品 PNG</button>
+          <button id="reset" class="btn" type="button">换一张</button>
+        </div>
+        <p id="export-status" class="ctx-note"></p>
+      </aside>
     </section>
   </main>
 
