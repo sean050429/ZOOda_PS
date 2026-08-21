@@ -450,10 +450,10 @@ main {
    全圆角。字色取 colors.banner_text (#F6F0D8)。 */
 .hud-weather {
   justify-content: center;
-  padding: 0 7%;
+  width: auto;
   border-radius: 999px;
-  background: rgba(20, 20, 14, 0.72);
-  color: #F6F0D8;
+  background: rgba(12, 14, 16, 0.82);
+  color: #5FC8F0;
   font-family: "Trebuchet MS", "Hiragino Sans GB", "PingFang SC",
                system-ui, sans-serif;
   font-weight: 600;

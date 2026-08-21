@@ -99,11 +99,17 @@ export function renderHud() {
     const src = el.assets?.png_x8 || el.assets?.png;
     if (!src) continue;
 
+    const pos = place(el.box, el.anchor, scale);
+    if (el.id.startsWith('disk_')) {
+      root.appendChild(blackenedDisk(`/ui_source/${src}`, pos, el.name || el.id));
+      continue;
+    }
+
     const img = document.createElement('img');
     img.className = 'hud-item';
     img.src = `/ui_source/${src}`;
     img.alt = el.name || el.id;
-    applyStyle(img, place(el.box, el.anchor, scale));
+    applyStyle(img, pos);
     root.appendChild(img);
   }
 
@@ -113,12 +119,69 @@ export function renderHud() {
   renderTempDial(scale);
 }
 
+/* ---------------- 希卡圆盘改黑底 ---------------- */
+
+// 原件的圆盘底色是蓝灰（#3C5A64 一带），和黑底的天气胶囊放一起不统一。
+//
+// 做法是「减去盘底主色，再把剩下的反差放大」，而不是「压黑底、保留图标」。
+// 后者试过两版都不行：感应器那个盘的图标和底色在原件里本来就几乎同色
+// （色距只有 20 上下），任何按亮度或按色距的阈值都会把图标一起吃掉。
+// 减背景则是保住**相对**反差，底色自然归零，图标该多明显还多明显。
+// 主色在运行时按量化直方图统计，不写死。
+const DISK_GAIN = 2.2;              // 反差增益
+const DISK_FLOOR = [10, 12, 14];    // 垫一点底，让盘面在暗照片上仍是个圆
+
+function dominantColor(d) {
+  const bins = new Map();
+  for (let i = 0; i < d.length; i += 4) {
+    if (d[i + 3] < 200) continue;
+    const key = ((d[i] >> 4) << 8) | ((d[i + 1] >> 4) << 4) | (d[i + 2] >> 4);
+    bins.set(key, (bins.get(key) || 0) + 1);
+  }
+  let best = 0, bestKey = 0;
+  for (const [k, n] of bins) if (n > best) { best = n; bestKey = k; }
+  return [((bestKey >> 8) & 15) * 16 + 8,
+          ((bestKey >> 4) & 15) * 16 + 8,
+          (bestKey & 15) * 16 + 8];
+}
+
+function blackenedDisk(src, pos, alt) {
+  const cv = document.createElement('canvas');
+  cv.className = 'hud-item';
+  cv.title = alt;
+  applyStyle(cv, pos);
+
+  const img = new Image();
+  img.onload = () => {
+    const px = Math.max(24, Math.round(pos.w * (window.devicePixelRatio || 1)));
+    cv.width = px;
+    cv.height = px;
+    const ctx = cv.getContext('2d');
+    ctx.drawImage(img, 0, 0, px, px);
+
+    const data = ctx.getImageData(0, 0, px, px);
+    const d = data.data;
+    const bg = dominantColor(d);
+
+    for (let i = 0; i < d.length; i += 4) {
+      if (d[i + 3] === 0) continue;
+      for (let k = 0; k < 3; k++) {
+        const v = (d[i + k] - bg[k]) * DISK_GAIN + DISK_FLOOR[k];
+        d[i + k] = v < 0 ? 0 : v > 255 ? 255 : v;
+      }
+    }
+    ctx.putImageData(data, 0, 0);
+  };
+  img.src = src;
+  return cv;
+}
+
 /* ---------------- 温度表盘 ---------------- */
 
 // 盘面直接用游戏原件（外圈 12 段刻度、配色、外框全部保留），
 // 只重画会动的部分：盖掉原件里那根固定朝上的指针，换成按温度旋转的，
 // 并在下方写出读数。两个颜色都是从原件里采样出来的。
-const DIAL_INNER = '#405860';   // 盘心底色，用来遮住原指针
+const DIAL_INNER = 'rgb(10,12,14)';  // 与压黑后的盘底一致，用来遮住原指针
 const DIAL_NEEDLE = '#88F0F8';  // 原件的指针与文字色
 
 // 实测范围：南极 -50.9°C、撒哈拉 36.3°C。映射到 ±110 度指针摆幅。
@@ -230,16 +293,24 @@ function renderClock(scale) {
   root.appendChild(node);
 }
 
-/** 只显示天气本身，温度交给温度表盘。图标等后面再画。 */
+/** 只显示天气本身，温度交给温度表盘。 */
 function renderWeather(scale) {
   const spec = byId('weather_bar');
   if (!spec) return;
   const node = document.createElement('div');
   node.className = 'hud-text hud-weather';
   node.textContent = hudState.weatherText;
+
+  // 参考主题的 slots.clock.pill 是 124x32、字号 17 —— 字高只占胶囊
+  // 高度的 53%，左右留白很宽。之前按 0.62 算字号，字把胶囊塞满了。
+  // 宽度改成按内容自适应，这样两个字和四个字都保持同样的留白比例。
   const pos = place(spec.box, spec.anchor, scale);
-  applyStyle(node, pos);
-  node.style.fontSize = `${pos.h * 0.62}px`;
+  const h = pos.h;
+  node.style.height = `${h}px`;
+  node.style.right = `${pos.right}px`;
+  node.style.bottom = `${pos.bottom}px`;
+  node.style.fontSize = `${h * 0.46}px`;
+  node.style.padding = `0 ${h * 1.05}px`;
   root.appendChild(node);
 }
 
