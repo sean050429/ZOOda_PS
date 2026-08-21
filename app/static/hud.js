@@ -22,6 +22,12 @@ export const hudState = {
   weatherText: '晴',  // 只放天气，温度走温度表盘
   clockText: '13:35',
   temperature: null, // 摄氏度，null 表示还没查到
+
+  bannerOn: true,
+  bannerText: '',
+  bannerScale: 1,
+  bannerX: 0.5,      // 占照片宽的比例，0.5 = 居中
+  bannerY: 0.135,    // 占照片高的比例，取自参考主题的 banner.anchor
 };
 
 let layout = null;
@@ -113,10 +119,53 @@ export function renderHud() {
     root.appendChild(img);
   }
 
+  renderBanner(scale);
   renderHearts(scale);
   renderClock(scale);
   renderWeather(scale);
   renderTempDial(scale);
+}
+
+/* ---------------- 地名标题 ---------------- */
+
+// ui_layout.json 里没有这个元件 —— 参考截图拍的时候没在进入新区域，
+// 画面上自然没有标题。规格改用参考主题的 slots.banner：
+// anchor [0.5, 0.135]、fontSize 34、letterSpacing 6，基于 1440x810，
+// 换算到我们的 1920x1080 要乘 1.3333。
+const BANNER_REF_W = 1440;
+const BANNER_FONT = 34;
+const BANNER_TRACKING = 6;
+
+function renderBanner(scale) {
+  if (!hudState.bannerOn) return;
+  const text = (hudState.bannerText || '').trim();
+  if (!text) return;
+
+  // scale 是「照片宽 / 1920 × 用户缩放」，这里的字号基于 1440，先补上比值
+  const k = scale * (CANVAS_W / BANNER_REF_W) * hudState.bannerScale;
+
+  const node = document.createElement('div');
+  node.className = 'hud-banner';
+  node.textContent = text;
+  node.style.left = `${hudState.bannerX * stage.clientWidth}px`;
+  node.style.top = `${hudState.bannerY * stage.clientHeight}px`;
+  node.style.fontSize = `${BANNER_FONT * k}px`;
+  node.style.letterSpacing = `${BANNER_TRACKING * k}px`;
+  // 字间距会在最后一个字右边也留一份，不补掉的话看起来偏左
+  node.style.textIndent = `${BANNER_TRACKING * k}px`;
+  root.appendChild(node);
+
+  // 长地名配大字号会横着跑出画面（「稻城亚丁国家级自然保护区」在 200%
+  // 时宽度到 108%，两边各溢出 52px）。这里量一次实际宽度，超了就等比缩，
+  // 字号和字间距一起缩，字距比例才不会走样。
+  const limit = stage.clientWidth * 0.92;
+  const actual = node.getBoundingClientRect().width;
+  if (actual > limit) {
+    const shrink = limit / actual;
+    node.style.fontSize = `${BANNER_FONT * k * shrink}px`;
+    node.style.letterSpacing = `${BANNER_TRACKING * k * shrink}px`;
+    node.style.textIndent = `${BANNER_TRACKING * k * shrink}px`;
+  }
 }
 
 /* ---------------- 希卡圆盘改黑底 ---------------- */

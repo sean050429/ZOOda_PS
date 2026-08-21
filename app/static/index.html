@@ -153,6 +153,34 @@
         <p id="hud-status" class="ctx-note"></p>
       </section>
 
+      <section class="panel" id="banner-panel" hidden>
+        <div class="panel-head">
+          <h2>地名标题</h2>
+          <label class="toggle">
+            <input id="banner-on" type="checkbox" checked>
+            <span>显示</span>
+          </label>
+        </div>
+        <p class="panel-hint">
+          文字取自上面的「地名」，改那里即可。默认位置和字号照搬原作。
+        </p>
+
+        <div class="sliders">
+          <label class="slider">
+            <span>大小 <b id="v-banner-size">100%</b></span>
+            <input id="s-banner-size" type="range" min="40" max="260" step="5" value="100">
+          </label>
+          <label class="slider">
+            <span>水平位置 <b id="v-banner-x">50%</b></span>
+            <input id="s-banner-x" type="range" min="0" max="100" value="50">
+          </label>
+          <label class="slider">
+            <span>垂直位置 <b id="v-banner-y">13.5%</b></span>
+            <input id="s-banner-y" type="range" min="0" max="100" step="0.5" value="13.5">
+          </label>
+        </div>
+      </section>
+
       <details class="raw">
         <summary>照片信息</summary>
         <dl id="meta" class="meta"></dl>

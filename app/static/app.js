@@ -21,6 +21,15 @@ const qInput = document.getElementById('q');
 const qGo = document.getElementById('q-go');
 const qResults = document.getElementById('q-results');
 
+const bannerPanel = document.getElementById('banner-panel');
+const bannerOn = document.getElementById('banner-on');
+const sBannerSize = document.getElementById('s-banner-size');
+const sBannerX = document.getElementById('s-banner-x');
+const sBannerY = document.getElementById('s-banner-y');
+const vBannerSize = document.getElementById('v-banner-size');
+const vBannerX = document.getElementById('v-banner-x');
+const vBannerY = document.getElementById('v-banner-y');
+
 const hudPanel = document.getElementById('hud-panel');
 const hudOn = document.getElementById('hud-on');
 const hudStatus = document.getElementById('hud-status');
@@ -90,6 +99,7 @@ function renderChips(items) {
       nameInput.value = item.label;
       nameTouchedByUser = true;
       place.name = item.label;
+      syncBanner();
     });
     chipsEl.appendChild(b);
   });
@@ -110,6 +120,7 @@ async function resolveName(lat, lon) {
       if (token === resolveToken && !nameTouchedByUser && d.name) {
         nameInput.value = d.name;
         place.name = d.name;
+        syncBanner();
       }
     }
   } catch { /* 网络问题，下面的地标查询还有机会 */ }
@@ -138,6 +149,7 @@ async function resolveName(lat, lon) {
       if (!nameTouchedByUser) {
         nameInput.value = marks[0].label;
         place.name = marks[0].label;
+        syncBanner();
       }
     }
   } catch { /* 地标查询是锦上添花，失败就用行政区名 */ }
@@ -172,6 +184,7 @@ async function runSearch() {
         lonInput.value = h.lon.toFixed(6);
         nameInput.value = h.name;
         nameTouchedByUser = true;
+        syncBanner();
         qResults.hidden = true;
         syncPlace(current?.context, { skipNameResolve: true });
       });
@@ -284,6 +297,7 @@ async function initHud() {
     return true;
   } catch {
     hudPanel.hidden = true;
+  bannerPanel.hidden = true;
     hudStatus.className = 'ctx-note is-error';
     hudStatus.textContent = '读不到 ui_source/ui_layout.json，HUD 布局不可用。';
     return false;
@@ -383,6 +397,7 @@ async function uploadPhoto(file) {
 
     if (await initHud()) {
       hudPanel.hidden = false;
+      bannerPanel.hidden = false;
       // 拍摄时间直接喂给 HUD 的时钟
       if (data.context.taken_at) {
         hudState.clockText = data.context.taken_at.slice(11, 16);
@@ -430,7 +445,14 @@ dropzone.addEventListener('drop', (e) => {
 nameInput.addEventListener('input', () => {
   nameTouchedByUser = true;
   place.name = nameInput.value || null;
+  syncBanner();
 });
+
+/** 地名字段是标题的唯一来源，解析出来和手改都走这里。 */
+function syncBanner() {
+  hudState.bannerText = nameInput.value || '';
+  paintHud();
+}
 
 qGo.addEventListener('click', runSearch);
 qInput.addEventListener('keydown', (e) => {
@@ -493,6 +515,29 @@ sPost.addEventListener('input', () => {
 });
 sPost.addEventListener('change', () => refreshMap());
 
+bannerOn.addEventListener('change', () => {
+  hudState.bannerOn = bannerOn.checked;
+  paintHud();
+});
+
+sBannerSize.addEventListener('input', () => {
+  hudState.bannerScale = Number(sBannerSize.value) / 100;
+  vBannerSize.textContent = `${sBannerSize.value}%`;
+  paintHud();
+});
+
+sBannerX.addEventListener('input', () => {
+  hudState.bannerX = Number(sBannerX.value) / 100;
+  vBannerX.textContent = `${sBannerX.value}%`;
+  paintHud();
+});
+
+sBannerY.addEventListener('input', () => {
+  hudState.bannerY = Number(sBannerY.value) / 100;
+  vBannerY.textContent = `${sBannerY.value}%`;
+  paintHud();
+});
+
 hudOn.addEventListener('change', () => {
   hudState.enabled = hudOn.checked;
   paintHud();
@@ -542,6 +587,7 @@ resetBtn.addEventListener('click', () => {
   workspace.hidden = true;
   mapPanel.hidden = true;
   hudPanel.hidden = true;
+  bannerPanel.hidden = true;
   dropzone.classList.remove('is-compact');
   photoEl.removeAttribute('src');
   [latInput, lonInput, timeInput, nameInput].forEach((el) => {

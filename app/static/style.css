@@ -485,3 +485,24 @@ main {
   height: 100%;
   pointer-events: none;
 }
+
+/* ---------- 地名标题 ---------- */
+
+/* 旷野之息进入新区域时那条居中的地名。
+   字体用宋体一类的中文衬线 —— 原作是明朝体风格，系统自带的 Songti SC
+   最接近；拉丁字母退到 PT Serif。字色取参考主题的 colors.banner_text。
+   注意：Songti SC 是 macOS 系统字体，换平台或要分发时得换成
+   思源宋体 / Noto Serif SC 这类可自由分发的字体。 */
+.hud-banner {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  white-space: nowrap;
+  color: #F6F0D8;
+  font-family: "Songti SC", "STSong", "Hiragino Mincho ProN",
+               "Noto Serif SC", "Source Han Serif SC", "PT Serif", serif;
+  font-weight: 600;
+  line-height: 1;
+  text-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.8),
+    0 0 0.5em rgba(0, 0, 0, 0.45);
+}
