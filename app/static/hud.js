@@ -395,7 +395,7 @@ window.addEventListener('resize', () => renderHud());
  * 只有绘制调用不同 —— 位置、配色、比例这些容易出错的东西只有一份。 */
 
 const BANNER_FONT_STACK =
-  '"Songti SC", "STSong", "Hiragino Mincho ProN", "Noto Serif SC", "PT Serif", serif';
+  '"Noto Serif SC", "Songti SC", "Source Han Serif SC", "PT Serif", serif';
 const UI_FONT_STACK =
   '"Trebuchet MS", "Hiragino Sans GB", "PingFang SC", system-ui, sans-serif';
 
@@ -535,6 +535,12 @@ async function drawBannerOn(ctx, scale, width, height) {
 
   const k = scale * (CANVAS_W / BANNER_REF_W) * hudState.bannerScale;
   let fontPx = BANNER_FONT * k;
+
+  // 画布不像 DOM 会等字体到位：字体没加载完就画，会静默用回退字体，
+  // 导出的成品和预览对不上。这里按实际文字把需要的分片先加载好。
+  try {
+    await document.fonts.load(`600 ${fontPx}px "Noto Serif SC"`, text);
+  } catch { /* 字体没抓过就用回退，不影响导出 */ }
   let tracking = BANNER_TRACKING * k;
 
   const measure = () => {
