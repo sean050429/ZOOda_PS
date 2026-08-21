@@ -55,6 +55,21 @@
           </label>
         </div>
 
+        <div class="nudge">
+          <span class="nudge-label">微调位置</span>
+          <div class="nudge-pad">
+            <button class="nudge-btn" data-dir="N" type="button">北</button>
+            <button class="nudge-btn" data-dir="W" type="button">西</button>
+            <label class="nudge-step">
+              <input id="nudge-m" type="number" min="1" max="100000" step="1" value="50">
+              <span>米</span>
+            </label>
+            <button class="nudge-btn" data-dir="E" type="button">东</button>
+            <button class="nudge-btn" data-dir="S" type="button">南</button>
+          </div>
+          <span id="nudge-info" class="nudge-info"></span>
+        </div>
+
         <div class="search-row">
           <input id="q" type="search" placeholder="或直接搜地名，例如「稻城亚丁」">
           <button id="q-go" class="btn btn-sm" type="button">搜索</button>

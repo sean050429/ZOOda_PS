@@ -518,3 +518,76 @@ main {
 
 .btn-primary:hover { background: rgba(63, 214, 214, 0.08); }
 .btn-primary:disabled { opacity: 0.5; cursor: default; }
+
+/* ---------- 方向微调 ---------- */
+
+.nudge {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 16px;
+  flex-wrap: wrap;
+}
+
+.nudge-label {
+  font-size: 12px;
+  color: var(--ink-dim);
+  letter-spacing: 0.04em;
+}
+
+/* 摆成十字，方位一眼能对上，比四个并排的按钮好认 */
+.nudge-pad {
+  display: grid;
+  grid-template-columns: repeat(3, auto);
+  grid-template-rows: repeat(3, auto);
+  gap: 4px;
+  align-items: center;
+  justify-items: center;
+}
+
+.nudge-pad .nudge-btn:nth-child(1) { grid-area: 1 / 2; }
+.nudge-pad .nudge-btn:nth-child(2) { grid-area: 2 / 1; }
+.nudge-pad .nudge-step            { grid-area: 2 / 2; }
+.nudge-pad .nudge-btn:nth-child(4) { grid-area: 2 / 3; }
+.nudge-pad .nudge-btn:nth-child(5) { grid-area: 3 / 2; }
+
+.nudge-btn {
+  width: 30px;
+  height: 26px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: transparent;
+  color: var(--ink);
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.nudge-btn:hover { border-color: var(--sheikah); color: var(--sheikah); }
+.nudge-btn:active { background: rgba(63, 214, 214, 0.12); }
+.nudge-btn:disabled { opacity: 0.35; cursor: default; }
+.nudge-btn:disabled:hover { border-color: var(--line); color: var(--ink); }
+
+.nudge-step { display: flex; align-items: center; gap: 3px; }
+
+.nudge-step input {
+  width: 62px;
+  padding: 4px 6px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: #14171c;
+  color: var(--ink);
+  font-size: 12px;
+  font-family: inherit;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.nudge-step input:focus { outline: none; border-color: var(--sheikah); }
+.nudge-step span { font-size: 11px; color: var(--ink-dim); }
+
+.nudge-info {
+  font-size: 12px;
+  color: var(--ink-dim);
+  font-variant-numeric: tabular-nums;
+}

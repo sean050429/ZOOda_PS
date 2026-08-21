@@ -22,6 +22,8 @@ const qInput = document.getElementById('q');
 const qGo = document.getElementById('q-go');
 const qResults = document.getElementById('q-results');
 const restoreBtn = document.getElementById('restore');
+const nudgeMeters = document.getElementById('nudge-m');
+const nudgeInfo = document.getElementById('nudge-info');
 
 const bannerPanel = document.getElementById('banner-panel');
 const bannerOn = document.getElementById('banner-on');
@@ -221,6 +223,7 @@ function syncPlace(ctx = null, { skipNameResolve = false } = {}) {
   };
 
   updateBadge(ctx);
+  updateNudgeInfo(ctx);
   renderNote(ctx, { latBad, lonBad });
 
   mapState.lat = place.lat;
@@ -470,6 +473,63 @@ nameInput.addEventListener('input', () => {
 function syncBanner() {
   hudState.bannerText = nameInput.value || '';
   paintHud();
+}
+
+/* ---------------- 方向微调 ---------------- */
+
+// 一个纬度约 111320 米，全球基本恒定。
+// 经度不是：同样的度数在赤道最宽、越靠近两极越窄，所以要除以 cos(纬度)。
+const METERS_PER_DEG_LAT = 111320;
+
+function nudge(dir) {
+  const meters = Number(nudgeMeters.value);
+  if (!Number.isFinite(meters) || meters <= 0) return;
+  if (place.lat === null || place.lon === null) return;
+
+  let lat = place.lat;
+  let lon = place.lon;
+
+  if (dir === 'N' || dir === 'S') {
+    lat += (dir === 'N' ? meters : -meters) / METERS_PER_DEG_LAT;
+    lat = Math.max(-90, Math.min(90, lat));
+  } else {
+    // 极点附近 cos 趋近 0，一米也会换算出巨大的经度差，这里兜个底
+    const shrink = Math.max(0.01, Math.cos((lat * Math.PI) / 180));
+    lon += (dir === 'E' ? meters : -meters) / (METERS_PER_DEG_LAT * shrink);
+    // 跨过换日线要绕回来，否则会填出 181 这种非法值
+    lon = ((lon + 180) % 360 + 360) % 360 - 180;
+  }
+
+  latInput.value = lat.toFixed(6);
+  lonInput.value = lon.toFixed(6);
+  syncPlace(current?.context);
+}
+
+document.querySelectorAll('.nudge-btn').forEach((btn) =>
+  btn.addEventListener('click', () => nudge(btn.dataset.dir)));
+
+/** 显示当前位置离照片原始位置有多远，方便判断微调过头了没。 */
+function updateNudgeInfo(ctx) {
+  const canNudge = place.lat !== null && place.lon !== null;
+  document.querySelectorAll('.nudge-btn').forEach((b) => { b.disabled = !canNudge; });
+
+  if (!canNudge || !ctx?.has_gps) {
+    nudgeInfo.textContent = '';
+    return;
+  }
+  const dLat = (place.lat - ctx.lat) * METERS_PER_DEG_LAT;
+  const dLon = (place.lon - ctx.lon) * METERS_PER_DEG_LAT *
+               Math.cos((ctx.lat * Math.PI) / 180);
+  const dist = Math.hypot(dLat, dLon);
+  if (dist < 1) {
+    nudgeInfo.textContent = '就在照片位置';
+    return;
+  }
+  const ns = dLat >= 0 ? '北' : '南';
+  const ew = dLon >= 0 ? '东' : '西';
+  const fmt = (m) => m >= 1000 ? `${(m / 1000).toFixed(2)} km` : `${Math.round(m)} m`;
+  nudgeInfo.textContent =
+    `离照片位置 ${fmt(dist)}（${ns}${fmt(Math.abs(dLat))} ${ew}${fmt(Math.abs(dLon))}）`;
 }
 
 /* 改过坐标之后要能退回照片自带的那份。fillContext 干的正是这件事，
