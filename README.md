@@ -30,8 +30,12 @@ HUD 各元件的位置跟随游戏原作布局，不单独调整 —— 坐标�
 ```bash
 python3 -m venv .venv
 ./.venv/bin/pip install -r requirements.txt
+./.venv/bin/python scripts/fetch_font.py     # 抓地名标题用的字体，约 3 MB
 ./.venv/bin/uvicorn app.main:app --reload --port 8000
 ```
+
+抓字体这步可以跳过 —— 跳了标题会退回系统自带的衬线字体，功能不受影响，
+只是换机器时字形会不一致。
 
 打开 <http://localhost:8000>。界面是左右两栏：左边只放照片，所有调节控件都在右边；窗口窄于 1180px 时自动改成上下排列。
 
@@ -53,15 +57,15 @@ python3 -m venv .venv
 | 6 | 天气 | 按坐标 + 拍摄时间查 Open-Meteo 的历史实况。天气写在右下的近黑胶囊里（蓝字，无辉光），温度走希卡石板的温度计模块：指针按温度旋转，读数写在盘心 |
 | 7 | 地名标题 | 摆在左下角的宋体白字，文字取自地名字段。可开关，大小与左边距、垂直位置都可调，过长时自动收字号避免跑出画面 |
 | 8 | 一键导出 | 按原图分辨率把照片和整套 HUD 合成一张 PNG。预览走 DOM、导出走画布，两条路径共用同一份位置与配色常量 |
+| 9 | 可分发字体 | 标题改用 Noto Serif SC（SIL OFL）。由 `scripts/fetch_font.py` 抓成本地 woff2 分片，之后完全离线，不再依赖系统字体 |
 
 ### 待完成
 
 | # | 功能 | 说明 |
 |---|---|---|
-| 9 | **换成可分发的字体** | 标题现在用系统自带的 Songti SC。换平台或要分发时得改成思源宋体 / Noto Serif SC 这类可自由分发的字体（BOTW 原版字体有版权，不能直接用） |
-| 10 | **天气图标** | 天气目前是文字。原作那条胶囊是三格预报图标，要画成 SVG。`weather.py` 已经把 WMO 代码归类成 clear / partly / cloudy / fog / drizzle / rain / snow / thunder 八种，直接对应图标即可 |
-| 11 | **重绘剩余游戏素材** | HUD 上 11 个元件里，7 个已是矢量重绘，4 个（三个希卡圆盘、指北条）仍是游戏原图直接抠的，成品发布前必须换掉 |
-| 12 | **其他游戏模版** | 文档里的拓展功能，架构上预留 |
+| 9 | **天气图标** | 天气目前是文字。原作那条胶囊是三格预报图标，要画成 SVG。`weather.py` 已经把 WMO 代码归类成 clear / partly / cloudy / fog / drizzle / rain / snow / thunder 八种，直接对应图标即可 |
+| 10 | **重绘剩余游戏素材** | HUD 上 11 个元件里，7 个已是矢量重绘，4 个（三个希卡圆盘、指北条）仍是游戏原图直接抠的，成品发布前必须换掉 |
+| 11 | **其他游戏模版** | 文档里的拓展功能，架构上预留 |
 
 ### 素材来源
 
@@ -105,6 +109,9 @@ app/
     minimap.js     照片上的小地图部件（底图 img + 箭头 canvas 两层）
     exporter.js    一键导出：原图分辨率合成 PNG
 ui_source/         HUD 元件与 ui_layout.json（gitignore，含游戏素材）
+    fonts/         Noto Serif SC 的 woff2 分片（gitignore，由脚本抓取）
+scripts/
+  fetch_font.py    抓取地名标题用的字体
 uploads/           上传的照片（gitignore）
 cache/             瓦片与地名缓存（gitignore）
 ```
@@ -171,6 +178,8 @@ cache/             瓦片与地名缓存（gitignore）
 ## 数据来源与署名
 
 地图数据 © [OpenStreetMap](https://www.openstreetmap.org/copyright) 贡献者，底图样式由 [CARTO](https://carto.com/attributions) 提供。
+
+地名标题使用 [Noto Serif SC](https://fonts.google.com/noto/specimen/Noto+Serif+SC)，SIL Open Font License 1.1。
 
 本项目与任天堂无关。《塞尔达传说》为任天堂的商标。项目的目标是模仿视觉风格，不分发游戏的任何素材、字体或商标 —— 仓库中不包含任何游戏素材。
 
