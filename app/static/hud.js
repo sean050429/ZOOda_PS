@@ -108,6 +108,11 @@ export function renderHud() {
     if (!src) continue;
 
     const pos = place(el.box, el.anchor, scale);
+
+    if (DRAWN[el.id]) {
+      root.appendChild(drawnItem(el.id, pos, el.name || el.id));
+      continue;
+    }
     if (el.id.startsWith('disk_')) {
       root.appendChild(blackenedDisk(`/ui_source/${src}`, pos, el.name || el.id));
       continue;
@@ -171,6 +176,78 @@ function renderBanner(scale) {
   }
 }
 
+/* ---------------- 自己重绘的元件 ---------------- */
+
+/* 这两个原来直接用游戏截图的抠图，现在改成按同样的视觉语言自己画。
+ * 尺寸和位置仍取自 ui_layout.json，只是像素不再来自原作。 */
+
+const DIAL_BASE = 'rgb(10,12,14)';        // 盘底，与温度叠加层同色
+const DIAL_NEUTRAL = [58, 74, 85];        // 常温段刻度
+const DIAL_WARM = [240, 138, 24];         // 高温端
+const DIAL_COOL = [122, 220, 232];        // 低温端
+const DIAL_SPAN = 150;                    // 刻度从正上算起向两侧铺开的角度
+
+const COMPASS_FILL = 'rgba(108, 132, 144, 0.92)';
+const COMPASS_TEXT = '#C2E9EF';
+
+function mix(a, b, t) {
+  return `rgb(${a.map((v, i) => Math.round(v + (b[i] - v) * t)).join(',')})`;
+}
+
+/** 温度表盘的盘面：近黑底 + 12 段刻度，右侧转橙、左侧转青。 */
+function drawTempDialBase(ctx, w) {
+  const c = w / 2;
+  ctx.clearRect(0, 0, w, w);
+  ctx.beginPath();
+  ctx.arc(c, c, c * 0.98, 0, Math.PI * 2);
+  ctx.fillStyle = DIAL_BASE;
+  ctx.fill();
+
+  const inner = c * 0.62;
+  const outer = c * 0.93;
+  const gap = 3;                     // 段间留缝，才有「刻度」的观感
+  for (let i = 0; i < 12; i++) {
+    const start = i * 30;
+    const mid = start + 15;
+    // 以正上为 0，右手边为正；离常温越远，颜色越浓
+    const signed = mid > 180 ? mid - 360 : mid;
+    const t = Math.min(1, Math.abs(signed) / DIAL_SPAN);
+    ctx.fillStyle = mix(DIAL_NEUTRAL, signed >= 0 ? DIAL_WARM : DIAL_COOL, t);
+
+    const a0 = ((start + gap / 2) - 90) * Math.PI / 180;
+    const a1 = ((start + 30 - gap / 2) - 90) * Math.PI / 180;
+    ctx.beginPath();
+    ctx.arc(c, c, outer, a0, a1);
+    ctx.arc(c, c, inner, a1, a0, true);
+    ctx.closePath();
+    ctx.fill();
+  }
+}
+
+/** 指北条：等腰三角形，顶点在正上中点，底边满宽，中间一个 N。 */
+function drawCompassBase(ctx, w, h) {
+  ctx.clearRect(0, 0, w, h);
+  ctx.beginPath();
+  ctx.moveTo(w / 2, 0);
+  ctx.lineTo(w, h);
+  ctx.lineTo(0, h);
+  ctx.closePath();
+  ctx.fillStyle = COMPASS_FILL;
+  ctx.fill();
+
+  ctx.fillStyle = COMPASS_TEXT;
+  ctx.font = `600 ${h * 0.52}px ${UI_FONT_STACK}`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('N', w / 2, h * 0.62);
+}
+
+// id → 绘制函数。命中的元件不再加载抠图。
+const DRAWN = {
+  disk_temperature: (ctx, w, h) => drawTempDialBase(ctx, w),
+  compass_north: drawCompassBase,
+};
+
 /* ---------------- 希卡圆盘改黑底 ---------------- */
 
 // 原件的圆盘底色是蓝灰（#3C5A64 一带），和黑底的天气胶囊放一起不统一。
@@ -195,6 +272,19 @@ function dominantColor(d) {
   return [((bestKey >> 8) & 15) * 16 + 8,
           ((bestKey >> 4) & 15) * 16 + 8,
           (bestKey & 15) * 16 + 8];
+}
+
+/** 自绘元件：建一块画布，按显示尺寸画上去。 */
+function drawnItem(id, pos, alt) {
+  const cv = document.createElement('canvas');
+  cv.className = 'hud-item';
+  cv.title = alt;
+  applyStyle(cv, pos);
+  const dpr = window.devicePixelRatio || 1;
+  cv.width = Math.max(24, Math.round(pos.w * dpr));
+  cv.height = Math.max(12, Math.round(pos.h * dpr));
+  DRAWN[id](cv.getContext('2d'), cv.width, cv.height);
+  return cv;
 }
 
 function blackenedDisk(src, pos, alt) {
@@ -509,6 +599,19 @@ export async function drawHudOnCanvas(ctx, width, height) {
 
     const pos = place(el.box, el.anchor, scale);
     const { x, y } = toXY(pos);
+
+    if (DRAWN[el.id]) {
+      const off = document.createElement('canvas');
+      off.width = Math.max(24, Math.round(pos.w));
+      off.height = Math.max(12, Math.round(pos.h));
+      DRAWN[el.id](off.getContext('2d'), off.width, off.height);
+      ctx.drawImage(off, x, y, pos.w, pos.h);
+      if (el.id === 'disk_temperature') {
+        drawDial(ctx, { left: x, top: y, w: pos.w, h: pos.h }, off.width);
+      }
+      continue;
+    }
+
     const img = await loadImage(`/ui_source/${src}`);
 
     if (el.id.startsWith('disk_')) {
