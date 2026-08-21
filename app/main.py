@@ -128,6 +128,36 @@ def api_weather(lat: float = Query(..., ge=-90, le=90),
     return weather.fetch_weather(lat, lon, when)
 
 
+@app.get("/api/full/{photo_id}")
+def api_full(photo_id: str) -> Response:
+    """按原图分辨率给出一张 JPEG，供导出时在画布上打底。
+
+    不能直接用 uploads 里的原文件：iPhone 的 HEIC 浏览器解不了，
+    而且竖拍照片要按 EXIF 方向转正才和预览一致。结果落盘缓存，
+    同一张照片重复导出不用反复解码。
+    """
+    if not photo_id.isalnum():
+        raise HTTPException(400, "非法的照片 id")
+    photo_dir = UPLOAD_DIR / photo_id
+    if not photo_dir.is_dir():
+        raise HTTPException(404, "找不到这张照片")
+
+    cached = photo_dir / "full.jpg"
+    if not cached.exists():
+        originals = list(photo_dir.glob("original.*"))
+        if not originals:
+            raise HTTPException(404, "原图已丢失")
+        with Image.open(originals[0]) as im:
+            im.load()
+            full = ImageOps.exif_transpose(im)
+            if full.mode not in ("RGB", "L"):
+                full = full.convert("RGB")
+            full.save(cached, "JPEG", quality=95)
+
+    return Response(cached.read_bytes(), media_type="image/jpeg",
+                    headers={"Cache-Control": "public, max-age=86400"})
+
+
 @app.get("/api/palettes")
 def api_palettes() -> dict:
     """小地图可选的配色，前端拿去填下拉框。"""

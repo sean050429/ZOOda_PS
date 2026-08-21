@@ -1,5 +1,6 @@
 import { mapState, refresh as refreshMap, onMapStatus, drawMarker } from '/minimap.js';
 import { hudState, loadLayout, renderHud, minimapSlot } from '/hud.js';
+import { exportPhoto } from '/exporter.js';
 
 const dropzone = document.getElementById('dropzone');
 const fileInput = document.getElementById('file-input');
@@ -20,6 +21,18 @@ const chipsEl = document.getElementById('name-chips');
 const qInput = document.getElementById('q');
 const qGo = document.getElementById('q-go');
 const qResults = document.getElementById('q-results');
+const restoreBtn = document.getElementById('restore');
+const nudgeMeters = document.getElementById('nudge-m');
+const nudgeInfo = document.getElementById('nudge-info');
+
+const bannerPanel = document.getElementById('banner-panel');
+const bannerOn = document.getElementById('banner-on');
+const sBannerSize = document.getElementById('s-banner-size');
+const sBannerX = document.getElementById('s-banner-x');
+const sBannerY = document.getElementById('s-banner-y');
+const vBannerSize = document.getElementById('v-banner-size');
+const vBannerX = document.getElementById('v-banner-x');
+const vBannerY = document.getElementById('v-banner-y');
 
 const hudPanel = document.getElementById('hud-panel');
 const hudOn = document.getElementById('hud-on');
@@ -90,6 +103,7 @@ function renderChips(items) {
       nameInput.value = item.label;
       nameTouchedByUser = true;
       place.name = item.label;
+      syncBanner();
     });
     chipsEl.appendChild(b);
   });
@@ -110,6 +124,7 @@ async function resolveName(lat, lon) {
       if (token === resolveToken && !nameTouchedByUser && d.name) {
         nameInput.value = d.name;
         place.name = d.name;
+        syncBanner();
       }
     }
   } catch { /* 网络问题，下面的地标查询还有机会 */ }
@@ -138,6 +153,7 @@ async function resolveName(lat, lon) {
       if (!nameTouchedByUser) {
         nameInput.value = marks[0].label;
         place.name = marks[0].label;
+        syncBanner();
       }
     }
   } catch { /* 地标查询是锦上添花，失败就用行政区名 */ }
@@ -172,6 +188,7 @@ async function runSearch() {
         lonInput.value = h.lon.toFixed(6);
         nameInput.value = h.name;
         nameTouchedByUser = true;
+        syncBanner();
         qResults.hidden = true;
         syncPlace(current?.context, { skipNameResolve: true });
       });
@@ -205,6 +222,8 @@ function syncPlace(ctx = null, { skipNameResolve = false } = {}) {
     source: ctx && ctx.has_gps && lat === ctx.lat && lon === ctx.lon ? 'exif' : 'manual',
   };
 
+  updateBadge(ctx);
+  updateNudgeInfo(ctx);
   renderNote(ctx, { latBad, lonBad });
 
   mapState.lat = place.lat;
@@ -217,6 +236,30 @@ function syncPlace(ctx = null, { skipNameResolve = false } = {}) {
     resolveNameSoon(place.lat, place.lon);
   }
   if (moved || place.takenAt !== prevTakenAt) loadWeatherSoon();
+}
+
+/* 徽章要跟着当前值走。原来只在上传时设一次，结果坐标改到别处了
+ * 还显示「来自照片」—— 明明已经不是照片记录的位置了。 */
+function updateBadge(ctx) {
+  const hasPhotoData = Boolean(ctx?.has_gps || ctx?.taken_at);
+  if (!hasPhotoData) {
+    sourceBadge.textContent = '需要手动填写';
+    sourceBadge.className = 'badge is-manual';
+    return;
+  }
+  const sameSpot = ctx.has_gps && place.lat === ctx.lat && place.lon === ctx.lon;
+  const sameTime = (timeInput.value || null) === (ctx.taken_at?.slice(0, 19) || null);
+
+  if (sameSpot && sameTime) {
+    sourceBadge.textContent = '来自照片';
+    sourceBadge.className = 'badge is-exif';
+  } else if (sameSpot || sameTime) {
+    sourceBadge.textContent = '部分已改';
+    sourceBadge.className = 'badge is-manual';
+  } else {
+    sourceBadge.textContent = '已手动调整';
+    sourceBadge.className = 'badge is-manual';
+  }
 }
 
 function renderNote(ctx, { latBad, lonBad }) {
@@ -253,18 +296,9 @@ function fillContext(ctx) {
   nameInput.value = '';
   nameTouchedByUser = false;
   chipsEl.innerHTML = '';
+  syncBanner();
 
-  const hasTime = Boolean(ctx.taken_at);
-  if (ctx.has_gps && hasTime) {
-    sourceBadge.textContent = '来自照片';
-    sourceBadge.className = 'badge is-exif';
-  } else if (ctx.has_gps || hasTime) {
-    sourceBadge.textContent = '照片信息不全';
-    sourceBadge.className = 'badge is-manual';
-  } else {
-    sourceBadge.textContent = '需要手动填写';
-    sourceBadge.className = 'badge is-manual';
-  }
+  restoreBtn.hidden = !(ctx.has_gps || ctx.taken_at);
 
   syncPlace(ctx);
   if (ctx.has_gps) resolveName(ctx.lat, ctx.lon);
@@ -284,6 +318,7 @@ async function initHud() {
     return true;
   } catch {
     hudPanel.hidden = true;
+  bannerPanel.hidden = true;
     hudStatus.className = 'ctx-note is-error';
     hudStatus.textContent = '读不到 ui_source/ui_layout.json，HUD 布局不可用。';
     return false;
@@ -383,6 +418,7 @@ async function uploadPhoto(file) {
 
     if (await initHud()) {
       hudPanel.hidden = false;
+      bannerPanel.hidden = false;
       // 拍摄时间直接喂给 HUD 的时钟
       if (data.context.taken_at) {
         hudState.clockText = data.context.taken_at.slice(11, 16);
@@ -430,6 +466,80 @@ dropzone.addEventListener('drop', (e) => {
 nameInput.addEventListener('input', () => {
   nameTouchedByUser = true;
   place.name = nameInput.value || null;
+  syncBanner();
+});
+
+/** 地名字段是标题的唯一来源，解析出来和手改都走这里。 */
+function syncBanner() {
+  hudState.bannerText = nameInput.value || '';
+  paintHud();
+}
+
+/* ---------------- 方向微调 ---------------- */
+
+// 一个纬度约 111320 米，全球基本恒定。
+// 经度不是：同样的度数在赤道最宽、越靠近两极越窄，所以要除以 cos(纬度)。
+const METERS_PER_DEG_LAT = 111320;
+
+function nudge(dir) {
+  const meters = Number(nudgeMeters.value);
+  if (!Number.isFinite(meters) || meters <= 0) return;
+  if (place.lat === null || place.lon === null) return;
+
+  let lat = place.lat;
+  let lon = place.lon;
+
+  if (dir === 'N' || dir === 'S') {
+    lat += (dir === 'N' ? meters : -meters) / METERS_PER_DEG_LAT;
+    lat = Math.max(-90, Math.min(90, lat));
+  } else {
+    // 极点附近 cos 趋近 0，一米也会换算出巨大的经度差，这里兜个底
+    const shrink = Math.max(0.01, Math.cos((lat * Math.PI) / 180));
+    lon += (dir === 'E' ? meters : -meters) / (METERS_PER_DEG_LAT * shrink);
+    // 跨过换日线要绕回来，否则会填出 181 这种非法值
+    lon = ((lon + 180) % 360 + 360) % 360 - 180;
+  }
+
+  latInput.value = lat.toFixed(6);
+  lonInput.value = lon.toFixed(6);
+  syncPlace(current?.context);
+}
+
+document.querySelectorAll('.nudge-btn').forEach((btn) =>
+  btn.addEventListener('click', () => nudge(btn.dataset.dir)));
+
+/** 显示当前位置离照片原始位置有多远，方便判断微调过头了没。 */
+function updateNudgeInfo(ctx) {
+  const canNudge = place.lat !== null && place.lon !== null;
+  document.querySelectorAll('.nudge-btn').forEach((b) => { b.disabled = !canNudge; });
+
+  if (!canNudge || !ctx?.has_gps) {
+    nudgeInfo.textContent = '';
+    return;
+  }
+  const dLat = (place.lat - ctx.lat) * METERS_PER_DEG_LAT;
+  const dLon = (place.lon - ctx.lon) * METERS_PER_DEG_LAT *
+               Math.cos((ctx.lat * Math.PI) / 180);
+  const dist = Math.hypot(dLat, dLon);
+  if (dist < 1) {
+    nudgeInfo.textContent = '就在照片位置';
+    return;
+  }
+  const ns = dLat >= 0 ? '北' : '南';
+  const ew = dLon >= 0 ? '东' : '西';
+  const fmt = (m) => m >= 1000 ? `${(m / 1000).toFixed(2)} km` : `${Math.round(m)} m`;
+  nudgeInfo.textContent =
+    `离照片位置 ${fmt(dist)}（${ns}${fmt(Math.abs(dLat))} ${ew}${fmt(Math.abs(dLon))}）`;
+}
+
+/* 改过坐标之后要能退回照片自带的那份。fillContext 干的正是这件事，
+ * 直接复用 —— 它会一并重置徽章、清掉手改标记并重新解析地名，
+ * 后续的小地图、天气、标题都由 syncPlace 连锁触发。 */
+restoreBtn.addEventListener('click', () => {
+  if (!current?.context) return;
+  qResults.hidden = true;
+  qInput.value = '';
+  fillContext(current.context);
 });
 
 qGo.addEventListener('click', runSearch);
@@ -493,6 +603,29 @@ sPost.addEventListener('input', () => {
 });
 sPost.addEventListener('change', () => refreshMap());
 
+bannerOn.addEventListener('change', () => {
+  hudState.bannerOn = bannerOn.checked;
+  paintHud();
+});
+
+sBannerSize.addEventListener('input', () => {
+  hudState.bannerScale = Number(sBannerSize.value) / 100;
+  vBannerSize.textContent = `${sBannerSize.value}%`;
+  paintHud();
+});
+
+sBannerX.addEventListener('input', () => {
+  hudState.bannerX = Number(sBannerX.value) / 100;
+  vBannerX.textContent = `${sBannerX.value}%`;
+  paintHud();
+});
+
+sBannerY.addEventListener('input', () => {
+  hudState.bannerY = Number(sBannerY.value) / 100;
+  vBannerY.textContent = `${sBannerY.value}%`;
+  paintHud();
+});
+
 hudOn.addEventListener('change', () => {
   hudState.enabled = hudOn.checked;
   paintHud();
@@ -534,6 +667,27 @@ inClock.addEventListener('input', () => {
   paintHud();
 });
 
+const exportBtn = document.getElementById('export');
+const exportStatus = document.getElementById('export-status');
+
+exportBtn.addEventListener('click', async () => {
+  if (!current) return;
+  exportBtn.disabled = true;
+  exportStatus.className = 'ctx-note';
+  exportStatus.textContent = '正在按原图分辨率合成…';
+  try {
+    const name = (place.name || '照片').replace(/[\\/:*?"<>|]/g, '_');
+    const r = await exportPhoto(current.id, `${name}.png`);
+    exportStatus.textContent =
+      `已导出 ${r.width}×${r.height}，${(r.bytes / 1048576).toFixed(1)} MB`;
+  } catch (err) {
+    exportStatus.className = 'ctx-note is-error';
+    exportStatus.textContent = `导出失败：${err.message}`;
+  } finally {
+    exportBtn.disabled = false;
+  }
+});
+
 resetBtn.addEventListener('click', () => {
   current = null;
   place = { lat: null, lon: null, takenAt: null, name: null, source: 'manual' };
@@ -542,6 +696,7 @@ resetBtn.addEventListener('click', () => {
   workspace.hidden = true;
   mapPanel.hidden = true;
   hudPanel.hidden = true;
+  bannerPanel.hidden = true;
   dropzone.classList.remove('is-compact');
   photoEl.removeAttribute('src');
   [latInput, lonInput, timeInput, nameInput].forEach((el) => {
@@ -562,4 +717,5 @@ resetBtn.addEventListener('click', () => {
   mapState.lat = mapState.lon = null;
   refreshMap({ redraw: false });
   setStatus('');
+  exportStatus.textContent = '';
 });

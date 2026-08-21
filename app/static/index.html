@@ -55,9 +55,25 @@
           </label>
         </div>
 
+        <div class="nudge">
+          <span class="nudge-label">微调位置</span>
+          <div class="nudge-pad">
+            <button class="nudge-btn" data-dir="N" type="button">北</button>
+            <button class="nudge-btn" data-dir="W" type="button">西</button>
+            <label class="nudge-step">
+              <input id="nudge-m" type="number" min="1" max="100000" step="1" value="50">
+              <span>米</span>
+            </label>
+            <button class="nudge-btn" data-dir="E" type="button">东</button>
+            <button class="nudge-btn" data-dir="S" type="button">南</button>
+          </div>
+          <span id="nudge-info" class="nudge-info"></span>
+        </div>
+
         <div class="search-row">
           <input id="q" type="search" placeholder="或直接搜地名，例如「稻城亚丁」">
           <button id="q-go" class="btn btn-sm" type="button">搜索</button>
+          <button id="restore" class="btn btn-sm" type="button" hidden>回到照片位置</button>
         </div>
         <ul id="q-results" class="results" hidden></ul>
 
@@ -153,12 +169,44 @@
         <p id="hud-status" class="ctx-note"></p>
       </section>
 
+      <section class="panel" id="banner-panel" hidden>
+        <div class="panel-head">
+          <h2>地名标题</h2>
+          <label class="toggle">
+            <input id="banner-on" type="checkbox" checked>
+            <span>显示</span>
+          </label>
+        </div>
+        <p class="panel-hint">
+          文字取自上面的「地名」，改那里即可。默认摆在左下角，字号照搬原作。
+        </p>
+
+        <div class="sliders">
+          <label class="slider">
+            <span>大小 <b id="v-banner-size">100%</b></span>
+            <input id="s-banner-size" type="range" min="40" max="260" step="5" value="100">
+          </label>
+          <label class="slider">
+            <span>左边距 <b id="v-banner-x">4%</b></span>
+            <input id="s-banner-x" type="range" min="0" max="90" step="0.5" value="4">
+          </label>
+          <label class="slider">
+            <span>垂直位置 <b id="v-banner-y">88%</b></span>
+            <input id="s-banner-y" type="range" min="0" max="100" step="0.5" value="88">
+          </label>
+        </div>
+      </section>
+
       <details class="raw">
         <summary>照片信息</summary>
         <dl id="meta" class="meta"></dl>
       </details>
 
-      <button id="reset" class="btn" type="button">换一张</button>
+      <div class="actions">
+        <button id="export" class="btn btn-primary" type="button">导出成品 PNG</button>
+        <button id="reset" class="btn" type="button">换一张</button>
+      </div>
+      <p id="export-status" class="ctx-note"></p>
     </section>
   </main>
 

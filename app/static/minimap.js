@@ -166,3 +166,50 @@ function fetchImage() {
 
 // 窗口缩放时照片显示尺寸变了，位置按比例重算
 window.addEventListener('resize', () => applyLayout());
+
+/* ---------------- 导出：把小地图画到画布上 ---------------- */
+
+/**
+ * 按目标画布尺寸重画小地图（底图 + 箭头）。
+ * 底图会按导出尺寸重新向服务端要一张，不是把预览那张放大 ——
+ * 预览只有几百像素，直接拉到原图分辨率会糊。
+ */
+export async function drawMinimapOnCanvas(ctx, width, height) {
+  if (!mapState.enabled || mapState.lat === null || mapState.lon === null) return;
+
+  const d = mapState.diameter * width;
+  const size = Math.round(Math.min(900, Math.max(120, d)));
+  const url = `/api/minimap?lat=${mapState.lat}&lon=${mapState.lon}` +
+              `&zoom=${mapState.zoom}&size=${size}&posterize=${mapState.posterize}` +
+              `&palette=${encodeURIComponent(mapState.palette)}`;
+
+  const base = await new Promise((resolve, reject) => {
+    const im = new Image();
+    im.onload = () => resolve(im);
+    im.onerror = () => reject(new Error('小地图底图加载失败'));
+    im.src = url;
+  });
+
+  const cx = mapState.x * width;
+  const cy = mapState.y * height;
+  ctx.drawImage(base, cx - d / 2, cy - d / 2, d, d);
+
+  // 箭头按导出尺寸重画，比例常量和预览共用
+  const a = (mapState.heading || 0) * Math.PI / 180;
+  const p = MARKER_P_RATIO * d * (mapState.markerScale || 1);
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(a);
+  ctx.beginPath();
+  ctx.moveTo(0, -p);
+  ctx.lineTo(p * 0.72, p * 0.8);
+  ctx.lineTo(0, p * 0.4);
+  ctx.lineTo(-p * 0.72, p * 0.8);
+  ctx.closePath();
+  ctx.fillStyle = MARKER_FILL;
+  ctx.fill();
+  ctx.lineWidth = Math.max(1, MARKER_STROKE_RATIO * d * (mapState.markerScale || 1));
+  ctx.strokeStyle = MARKER_STROKE;
+  ctx.stroke();
+  ctx.restore();
+}
