@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import io
+from datetime import datetime
 import shutil
 import uuid
 from pathlib import Path
@@ -17,7 +18,7 @@ from fastapi.responses import Response
 from fastapi.staticfiles import StaticFiles
 from PIL import Image, ImageOps
 
-from app import geo, minimap
+from app import geo, minimap, weather
 from app.exif_reader import read_photo_context
 
 pillow_heif.register_heif_opener()
@@ -113,6 +114,18 @@ def api_landmark(lat: float = Query(..., ge=-90, le=90),
                  lon: float = Query(..., ge=-180, le=180)) -> dict:
     """慢的那条腿：2~15 秒，但能挖出真正的地标名。前端异步调，失败不影响主流程。"""
     return geo.find_landmark(lat, lon)
+
+
+@app.get("/api/weather")
+def api_weather(lat: float = Query(..., ge=-90, le=90),
+                lon: float = Query(..., ge=-180, le=180),
+                at: str = Query(..., description="照片的本地拍摄时间，ISO 格式")) -> dict:
+    """查拍摄当时的天气。数据来自 Open-Meteo，无需 API key。"""
+    try:
+        when = datetime.fromisoformat(at[:19])
+    except ValueError:
+        raise HTTPException(400, "时间格式不对，需要 ISO 格式如 2025-07-16T14:55:19")
+    return weather.fetch_weather(lat, lon, when)
 
 
 @app.get("/api/palettes")

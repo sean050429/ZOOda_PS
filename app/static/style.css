@@ -445,28 +445,37 @@ main {
   line-height: 1;
 }
 
-.hud-clock { justify-content: flex-start; }
-
-/* 天气条先用文字占位，第 6 步接了真实天气再换成图标 */
+/* 天气条与时间：近黑胶囊 + 浅色字，不加辉光。
+   胶囊规格取自参考主题的 slots.clock.pill：fill #14140E、alpha 0.72、
+   全圆角。字色取 colors.banner_text (#F6F0D8)。 */
 .hud-weather {
   justify-content: center;
+  width: auto;
   border-radius: 999px;
-  background: rgba(28, 34, 44, 0.55);
-  backdrop-filter: blur(2px);
-  padding: 0 4%;
+  background: rgba(12, 14, 16, 0.82);
+  color: #5FC8F0;
+  font-family: "Trebuchet MS", "Hiragino Sans GB", "PingFang SC",
+               system-ui, sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
 }
 
-.select {
-  padding: 8px 10px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  background: #14171c;
-  color: var(--ink);
-  font-size: 13px;
-  font-family: inherit;
+/* 时间按参考图：浅色字，不套框 */
+.hud-clock {
+  justify-content: flex-start;
+  color: #F6F0D8;
+  font-family: "Trebuchet MS", "Hiragino Sans GB", "PingFang SC",
+               system-ui, sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.75);
 }
 
-.select:focus { outline: none; border-color: var(--sheikah); }
+/* 温度表盘：盘面用原件，这层 canvas 只叠会动的指针和读数 */
+.hud-dial {
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.55));
+}
 
 /* 玩家箭头图层，盖在小地图底图上，不吃鼠标事件（拖动仍由外层负责） */
 .minimap-marker {
