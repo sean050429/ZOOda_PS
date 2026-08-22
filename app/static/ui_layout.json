@@ -1,0 +1,1247 @@
+{
+  "source": "微信图片_20260819211818_95_2.jpg",
+  "canvas": {
+    "w": 1920,
+    "h": 1080
+  },
+  "game": "The Legend of Zelda: Breath of the Wild",
+  "coordinate_note": "像素坐标基于 1920x1080 原图，box 为左上角起点与宽高；right/bottom 为闭区间末位像素。",
+  "groups": {
+    "top_left": {
+      "anchor": "top-left",
+      "desc": "血条 + 符文 + 装备槽",
+      "bbox": {
+        "x": 76,
+        "y": 50,
+        "w": 365,
+        "h": 144,
+        "right": 440,
+        "bottom": 193
+      }
+    },
+    "bottom_right": {
+      "anchor": "bottom-right",
+      "desc": "希卡圆盘列 + 时间天气 + 小地图",
+      "bbox": {
+        "x": 1425,
+        "y": 760,
+        "w": 419,
+        "h": 260,
+        "right": 1843,
+        "bottom": 1019
+      }
+    }
+  },
+  "elements": [
+    {
+      "id": "hearts_row",
+      "name": "心心血条（整排）",
+      "group": "top_left",
+      "anchor": "top-left",
+      "box": {
+        "x": 87,
+        "y": 50,
+        "w": 354,
+        "h": 19,
+        "right": 440,
+        "bottom": 68
+      },
+      "center": {
+        "x": 263.5,
+        "y": 59.0
+      },
+      "offset_from_anchor": {
+        "left": 87,
+        "top": 50
+      },
+      "normalized": {
+        "x": 0.04531,
+        "y": 0.0463,
+        "w": 0.18438,
+        "h": 0.01759
+      },
+      "dominant_rgb": [
+        255,
+        60,
+        58
+      ],
+      "dominant_hex": "#FF3C3A",
+      "opaque_px": 2482,
+      "note": "12 格：11 满 + 1 空。格距 30px，单格 24x19px",
+      "assets": {
+        "png": "hearts_row.png",
+        "png_x8": "hd_png_x8/hearts_row.png",
+        "svg": "hd_svg/hearts_row.svg",
+        "scale_note": "矢量重绘，png_x8 由 svg 渲染，可再放大"
+      }
+    },
+    {
+      "id": "heart_full",
+      "name": "心心（满）单格",
+      "group": "top_left",
+      "anchor": "top-left",
+      "box": {
+        "x": 87,
+        "y": 50,
+        "w": 24,
+        "h": 19,
+        "right": 110,
+        "bottom": 68
+      },
+      "center": {
+        "x": 98.5,
+        "y": 59.0
+      },
+      "offset_from_anchor": {
+        "left": 87,
+        "top": 50
+      },
+      "normalized": {
+        "x": 0.04531,
+        "y": 0.0463,
+        "w": 0.0125,
+        "h": 0.01759
+      },
+      "dominant_rgb": [
+        255,
+        59,
+        57
+      ],
+      "dominant_hex": "#FF3B39",
+      "opaque_px": 223,
+      "note": "第 1 格，红 #FE3E3D",
+      "assets": {
+        "png": "heart_full.png",
+        "png_x8": "hd_png_x8/heart_full.png",
+        "svg": "hd_svg/heart_full.svg",
+        "scale_note": "矢量重绘，png_x8 由 svg 渲染，可再放大"
+      }
+    },
+    {
+      "id": "heart_empty",
+      "name": "心心（空）单格",
+      "group": "top_left",
+      "anchor": "top-left",
+      "box": {
+        "x": 417,
+        "y": 50,
+        "w": 24,
+        "h": 18,
+        "right": 440,
+        "bottom": 67
+      },
+      "center": {
+        "x": 428.5,
+        "y": 58.5
+      },
+      "offset_from_anchor": {
+        "left": 417,
+        "top": 50
+      },
+      "normalized": {
+        "x": 0.21719,
+        "y": 0.0463,
+        "w": 0.0125,
+        "h": 0.01667
+      },
+      "dominant_rgb": [
+        66,
+        84,
+        102
+      ],
+      "dominant_hex": "#425466",
+      "opaque_px": 250,
+      "note": "第 12 格，灰蓝 #445768",
+      "assets": {
+        "png": "heart_empty.png",
+        "png_x8": "hd_png_x8/heart_empty.png",
+        "svg": "hd_svg/heart_empty.svg",
+        "scale_note": "矢量重绘，png_x8 由 svg 渲染，可再放大"
+      }
+    },
+    {
+      "id": "rune_camera",
+      "name": "卢比符文图标（相机）",
+      "group": "top_left",
+      "anchor": "top-left",
+      "box": {
+        "x": 108,
+        "y": 101,
+        "w": 42,
+        "h": 36,
+        "right": 149,
+        "bottom": 136
+      },
+      "center": {
+        "x": 128.5,
+        "y": 118.5
+      },
+      "offset_from_anchor": {
+        "left": 108,
+        "top": 101
+      },
+      "normalized": {
+        "x": 0.05625,
+        "y": 0.09352,
+        "w": 0.02187,
+        "h": 0.03333
+      },
+      "dominant_rgb": [
+        167,
+        206,
+        0
+      ],
+      "dominant_hex": "#A7CE00",
+      "opaque_px": 933,
+      "note": "当前装备的符文，黄绿 #A8C808",
+      "assets": {
+        "png": "rune_camera.png",
+        "png_x8": "hd_png_x8/rune_camera.png",
+        "svg": "hd_svg/rune_camera.svg",
+        "scale_note": "矢量重绘，png_x8 由 svg 渲染，可再放大"
+      }
+    },
+    {
+      "id": "shield_slot",
+      "name": "盾牌槽图标",
+      "group": "top_left",
+      "anchor": "top-left",
+      "box": {
+        "x": 76,
+        "y": 159,
+        "w": 25,
+        "h": 31,
+        "right": 100,
+        "bottom": 189
+      },
+      "center": {
+        "x": 88.0,
+        "y": 174.0
+      },
+      "offset_from_anchor": {
+        "left": 76,
+        "top": 159
+      },
+      "normalized": {
+        "x": 0.03958,
+        "y": 0.14722,
+        "w": 0.01302,
+        "h": 0.0287
+      },
+      "dominant_rgb": [
+        244,
+        243,
+        217
+      ],
+      "dominant_hex": "#F4F3D9",
+      "opaque_px": 429,
+      "note": "米白 #EDE7D2",
+      "assets": {
+        "png": "shield_slot.png",
+        "png_x8": "hd_png_x8/shield_slot.png",
+        "svg": "hd_svg/shield_slot.svg",
+        "scale_note": "矢量重绘，png_x8 由 svg 渲染，可再放大"
+      }
+    },
+    {
+      "id": "dpad_cluster",
+      "name": "十字键提示（四箭头）",
+      "group": "top_left",
+      "anchor": "top-left",
+      "box": {
+        "x": 105,
+        "y": 149,
+        "w": 47,
+        "h": 45,
+        "right": 151,
+        "bottom": 193
+      },
+      "center": {
+        "x": 128.0,
+        "y": 171.0
+      },
+      "offset_from_anchor": {
+        "left": 105,
+        "top": 149
+      },
+      "normalized": {
+        "x": 0.05469,
+        "y": 0.13796,
+        "w": 0.02448,
+        "h": 0.04167
+      },
+      "dominant_rgb": [
+        237,
+        242,
+        217
+      ],
+      "dominant_hex": "#EDF2D9",
+      "opaque_px": 656,
+      "note": "上/下/左/右四个圆形箭头",
+      "assets": {
+        "png": "dpad_cluster.png",
+        "png_x8": "hd_png_x8/dpad_cluster.png",
+        "svg": "hd_svg/dpad_cluster.svg",
+        "scale_note": "矢量重绘，png_x8 由 svg 渲染，可再放大"
+      }
+    },
+    {
+      "id": "dpad_up",
+      "name": "十字键·上",
+      "group": "top_left",
+      "anchor": "top-left",
+      "box": {
+        "x": 121,
+        "y": 150,
+        "w": 16,
+        "h": 16,
+        "right": 136,
+        "bottom": 165
+      },
+      "center": {
+        "x": 128.5,
+        "y": 157.5
+      },
+      "offset_from_anchor": {
+        "left": 121,
+        "top": 150
+      },
+      "normalized": {
+        "x": 0.06302,
+        "y": 0.13889,
+        "w": 0.00833,
+        "h": 0.01481
+      },
+      "circle": {
+        "cx": 128.5,
+        "cy": 157.5,
+        "r": 7.5,
+        "diameter": 15.0
+      },
+      "dominant_rgb": [
+        234,
+        242,
+        217
+      ],
+      "dominant_hex": "#EAF2D9",
+      "opaque_px": 164,
+      "assets": {
+        "png": "dpad_up.png",
+        "png_x8": "hd_png_x8/dpad_up.png",
+        "svg": "hd_svg/dpad_up.svg",
+        "scale_note": "矢量重绘，png_x8 由 svg 渲染，可再放大"
+      }
+    },
+    {
+      "id": "dpad_left",
+      "name": "十字键·左",
+      "group": "top_left",
+      "anchor": "top-left",
+      "box": {
+        "x": 106,
+        "y": 163,
+        "w": 16,
+        "h": 16,
+        "right": 121,
+        "bottom": 178
+      },
+      "center": {
+        "x": 113.5,
+        "y": 170.5
+      },
+      "offset_from_anchor": {
+        "left": 106,
+        "top": 163
+      },
+      "normalized": {
+        "x": 0.05521,
+        "y": 0.15093,
+        "w": 0.00833,
+        "h": 0.01481
+      },
+      "circle": {
+        "cx": 113.5,
+        "cy": 170.5,
+        "r": 7.5,
+        "diameter": 15.0
+      },
+      "dominant_rgb": [
+        238,
+        242,
+        217
+      ],
+      "dominant_hex": "#EEF2D9",
+      "opaque_px": 164,
+      "assets": {
+        "png": "dpad_left.png",
+        "png_x8": "hd_png_x8/dpad_left.png",
+        "svg": "hd_svg/dpad_left.svg",
+        "scale_note": "矢量重绘，png_x8 由 svg 渲染，可再放大"
+      }
+    },
+    {
+      "id": "dpad_right",
+      "name": "十字键·右",
+      "group": "top_left",
+      "anchor": "top-left",
+      "box": {
+        "x": 135,
+        "y": 163,
+        "w": 16,
+        "h": 16,
+        "right": 150,
+        "bottom": 178
+      },
+      "center": {
+        "x": 142.5,
+        "y": 170.5
+      },
+      "offset_from_anchor": {
+        "left": 135,
+        "top": 163
+      },
+      "normalized": {
+        "x": 0.07031,
+        "y": 0.15093,
+        "w": 0.00833,
+        "h": 0.01481
+      },
+      "circle": {
+        "cx": 142.5,
+        "cy": 170.5,
+        "r": 7.5,
+        "diameter": 15.0
+      },
+      "dominant_rgb": [
+        238,
+        242,
+        217
+      ],
+      "dominant_hex": "#EEF2D9",
+      "opaque_px": 164,
+      "assets": {
+        "png": "dpad_right.png",
+        "png_x8": "hd_png_x8/dpad_right.png",
+        "svg": "hd_svg/dpad_right.svg",
+        "scale_note": "矢量重绘，png_x8 由 svg 渲染，可再放大"
+      }
+    },
+    {
+      "id": "dpad_down",
+      "name": "十字键·下",
+      "group": "top_left",
+      "anchor": "top-left",
+      "box": {
+        "x": 121,
+        "y": 177,
+        "w": 16,
+        "h": 16,
+        "right": 136,
+        "bottom": 192
+      },
+      "center": {
+        "x": 128.5,
+        "y": 184.5
+      },
+      "offset_from_anchor": {
+        "left": 121,
+        "top": 177
+      },
+      "normalized": {
+        "x": 0.06302,
+        "y": 0.16389,
+        "w": 0.00833,
+        "h": 0.01481
+      },
+      "circle": {
+        "cx": 128.5,
+        "cy": 184.5,
+        "r": 7.5,
+        "diameter": 15.0
+      },
+      "dominant_rgb": [
+        239,
+        242,
+        217
+      ],
+      "dominant_hex": "#EFF2D9",
+      "opaque_px": 164,
+      "assets": {
+        "png": "dpad_down.png",
+        "png_x8": "hd_png_x8/dpad_down.png",
+        "svg": "hd_svg/dpad_down.svg",
+        "scale_note": "矢量重绘，png_x8 由 svg 渲染，可再放大"
+      }
+    },
+    {
+      "id": "weapon_slot_sword",
+      "name": "武器槽图标（剑）",
+      "group": "top_left",
+      "anchor": "top-left",
+      "box": {
+        "x": 153,
+        "y": 157,
+        "w": 32,
+        "h": 33,
+        "right": 184,
+        "bottom": 189
+      },
+      "center": {
+        "x": 168.5,
+        "y": 173.0
+      },
+      "offset_from_anchor": {
+        "left": 153,
+        "top": 157
+      },
+      "normalized": {
+        "x": 0.07969,
+        "y": 0.14537,
+        "w": 0.01667,
+        "h": 0.03056
+      },
+      "dominant_rgb": [
+        244,
+        243,
+        217
+      ],
+      "dominant_hex": "#F4F3D9",
+      "opaque_px": 296,
+      "assets": {
+        "png": "weapon_slot_sword.png",
+        "png_x8": "hd_png_x8/weapon_slot_sword.png",
+        "svg": "hd_svg/weapon_slot_sword.svg",
+        "scale_note": "矢量重绘，png_x8 由 svg 渲染，可再放大"
+      }
+    },
+    {
+      "id": "stamina_wheel",
+      "name": "耐力轮（满）",
+      "group": "top_left",
+      "anchor": "top-left",
+      "box": {
+        "x": 208,
+        "y": 155,
+        "w": 34,
+        "h": 36,
+        "right": 241,
+        "bottom": 190
+      },
+      "center": {
+        "x": 224.5,
+        "y": 172.5
+      },
+      "offset_from_anchor": {
+        "left": 208,
+        "top": 155
+      },
+      "normalized": {
+        "x": 0.10833,
+        "y": 0.14352,
+        "w": 0.01771,
+        "h": 0.03333
+      },
+      "dominant_rgb": [
+        244,
+        243,
+        60
+      ],
+      "dominant_hex": "#F4F33C",
+      "opaque_px": 603,
+      "note": "亮黄 #F2ED37 圆环",
+      "assets": {
+        "png": "stamina_wheel.png",
+        "png_x8": "hd_png_x8/stamina_wheel.png",
+        "svg": "hd_svg/stamina_wheel.svg",
+        "scale_note": "矢量重绘，png_x8 由 svg 渲染，可再放大"
+      }
+    },
+    {
+      "id": "disk_sheikah_sensor",
+      "name": "希卡之石探测器圆盘",
+      "group": "bottom_right",
+      "anchor": "bottom-right",
+      "box": {
+        "x": 1519,
+        "y": 784,
+        "w": 58,
+        "h": 58,
+        "right": 1576,
+        "bottom": 841
+      },
+      "center": {
+        "x": 1547.5,
+        "y": 812.5
+      },
+      "offset_from_anchor": {
+        "right": 343,
+        "bottom": 238
+      },
+      "normalized": {
+        "x": 0.79115,
+        "y": 0.72593,
+        "w": 0.03021,
+        "h": 0.0537
+      },
+      "circle": {
+        "cx": 1547.5,
+        "cy": 812.5,
+        "r": 28.0,
+        "diameter": 56.0
+      },
+      "dominant_rgb": [
+        80,
+        97,
+        104
+      ],
+      "dominant_hex": "#506168",
+      "opaque_px": 2416,
+      "note": "半透明深色圆盘 d≈56，图标为同心波纹（未激活，很暗）",
+      "assets": {
+        "png": "disk_sheikah_sensor.png",
+        "png_x8": "hd_png_x8/disk_sheikah_sensor.png",
+        "scale_note": "只做了插值放大，有纹理，放大后是平滑不是清晰"
+      }
+    },
+    {
+      "id": "disk_temperature",
+      "name": "温度计圆盘",
+      "group": "bottom_right",
+      "anchor": "bottom-right",
+      "box": {
+        "x": 1519,
+        "y": 844,
+        "w": 58,
+        "h": 58,
+        "right": 1576,
+        "bottom": 901
+      },
+      "center": {
+        "x": 1547.5,
+        "y": 872.5
+      },
+      "offset_from_anchor": {
+        "right": 343,
+        "bottom": 178
+      },
+      "normalized": {
+        "x": 0.79115,
+        "y": 0.78148,
+        "w": 0.03021,
+        "h": 0.0537
+      },
+      "circle": {
+        "cx": 1547.5,
+        "cy": 872.5,
+        "r": 27.5,
+        "diameter": 55.0
+      },
+      "dominant_rgb": [
+        70,
+        96,
+        105
+      ],
+      "dominant_hex": "#466069",
+      "opaque_px": 2324,
+      "note": "12 段刻度，左青右橙，指针朝正上（常温），下方 °C",
+      "assets": {
+        "png": "disk_temperature.png",
+        "png_x8": "hd_png_x8/disk_temperature.png",
+        "scale_note": "只做了插值放大，有纹理，放大后是平滑不是清晰"
+      }
+    },
+    {
+      "id": "disk_sound",
+      "name": "声音强度圆盘",
+      "group": "bottom_right",
+      "anchor": "bottom-right",
+      "box": {
+        "x": 1519,
+        "y": 903,
+        "w": 58,
+        "h": 59,
+        "right": 1576,
+        "bottom": 961
+      },
+      "center": {
+        "x": 1547.5,
+        "y": 932.0
+      },
+      "offset_from_anchor": {
+        "right": 343,
+        "bottom": 118
+      },
+      "normalized": {
+        "x": 0.79115,
+        "y": 0.83611,
+        "w": 0.03021,
+        "h": 0.05463
+      },
+      "circle": {
+        "cx": 1547.5,
+        "cy": 932.0,
+        "r": 28.0,
+        "diameter": 56.0
+      },
+      "dominant_rgb": [
+        68,
+        90,
+        110
+      ],
+      "dominant_hex": "#445A6E",
+      "opaque_px": 2412,
+      "note": "紫色波形横线",
+      "assets": {
+        "png": "disk_sound.png",
+        "png_x8": "hd_png_x8/disk_sound.png",
+        "scale_note": "只做了插值放大，有纹理，放大后是平滑不是清晰"
+      }
+    },
+    {
+      "id": "clock_text",
+      "name": "时间文字 13:35",
+      "group": "bottom_right",
+      "anchor": "bottom-right",
+      "box": {
+        "x": 1443,
+        "y": 950,
+        "w": 45,
+        "h": 15,
+        "right": 1487,
+        "bottom": 964
+      },
+      "center": {
+        "x": 1465.0,
+        "y": 957.0
+      },
+      "offset_from_anchor": {
+        "right": 432,
+        "bottom": 115
+      },
+      "normalized": {
+        "x": 0.75156,
+        "y": 0.87963,
+        "w": 0.02344,
+        "h": 0.01389
+      },
+      "dominant_rgb": [
+        182,
+        252,
+        255
+      ],
+      "dominant_hex": "#B6FCFF",
+      "opaque_px": 160,
+      "note": "淡青白色斜体数字，字高 15px",
+      "assets": {
+        "png": "clock_text.png",
+        "png_x8": "hd_png_x8/clock_text.png",
+        "scale_note": "只做了插值放大，有纹理，放大后是平滑不是清晰"
+      }
+    },
+    {
+      "id": "weather_bar",
+      "name": "天气预报条",
+      "group": "bottom_right",
+      "anchor": "bottom-right",
+      "box": {
+        "x": 1425,
+        "y": 972,
+        "w": 150,
+        "h": 42,
+        "right": 1574,
+        "bottom": 1013
+      },
+      "center": {
+        "x": 1499.5,
+        "y": 992.5
+      },
+      "offset_from_anchor": {
+        "right": 345,
+        "bottom": 66
+      },
+      "normalized": {
+        "x": 0.74219,
+        "y": 0.9,
+        "w": 0.07812,
+        "h": 0.03889
+      },
+      "dominant_rgb": [
+        63,
+        91,
+        108
+      ],
+      "dominant_hex": "#3F5B6C",
+      "opaque_px": 5740,
+      "note": "胶囊形 150x42，圆角 r=21；三格预报，分隔线 x=1446/1487.5/1528.5，格宽 41px",
+      "assets": {
+        "png": "weather_bar.png",
+        "png_x8": "hd_png_x8/weather_bar.png",
+        "scale_note": "只做了插值放大，有纹理，放大后是平滑不是清晰"
+      }
+    },
+    {
+      "id": "weather_marker",
+      "name": "当前时刻三角标",
+      "group": "bottom_right",
+      "anchor": "bottom-right",
+      "box": {
+        "x": 1459,
+        "y": 972,
+        "w": 9,
+        "h": 6,
+        "right": 1467,
+        "bottom": 977
+      },
+      "center": {
+        "x": 1463.0,
+        "y": 974.5
+      },
+      "offset_from_anchor": {
+        "right": 452,
+        "bottom": 102
+      },
+      "normalized": {
+        "x": 0.7599,
+        "y": 0.9,
+        "w": 0.00469,
+        "h": 0.00556
+      },
+      "dominant_rgb": [
+        169,
+        236,
+        255
+      ],
+      "dominant_hex": "#A9ECFF",
+      "opaque_px": 16,
+      "note": "压在预报条上边缘的向下小三角",
+      "assets": {
+        "png": "weather_marker.png",
+        "png_x8": "hd_png_x8/weather_marker.png",
+        "svg": "hd_svg/weather_marker.svg",
+        "scale_note": "矢量重绘，png_x8 由 svg 渲染，可再放大"
+      }
+    },
+    {
+      "id": "weather_icon_now",
+      "name": "天气图标·当前（晴）",
+      "group": "bottom_right",
+      "anchor": "bottom-right",
+      "box": {
+        "x": 1456,
+        "y": 980,
+        "w": 24,
+        "h": 26,
+        "right": 1479,
+        "bottom": 1005
+      },
+      "center": {
+        "x": 1467.5,
+        "y": 992.5
+      },
+      "offset_from_anchor": {
+        "right": 440,
+        "bottom": 74
+      },
+      "normalized": {
+        "x": 0.75833,
+        "y": 0.90741,
+        "w": 0.0125,
+        "h": 0.02407
+      },
+      "dominant_rgb": [
+        158,
+        240,
+        255
+      ],
+      "dominant_hex": "#9EF0FF",
+      "opaque_px": 154,
+      "note": "高亮显示",
+      "assets": {
+        "png": "weather_icon_now.png",
+        "png_x8": "hd_png_x8/weather_icon_now.png",
+        "svg": "hd_svg/weather_icon_now.svg",
+        "scale_note": "矢量重绘，png_x8 由 svg 渲染，可再放大"
+      }
+    },
+    {
+      "id": "weather_icon_next",
+      "name": "天气图标·下一格（晴）",
+      "group": "bottom_right",
+      "anchor": "bottom-right",
+      "box": {
+        "x": 1497,
+        "y": 980,
+        "w": 24,
+        "h": 26,
+        "right": 1520,
+        "bottom": 1005
+      },
+      "center": {
+        "x": 1508.5,
+        "y": 992.5
+      },
+      "offset_from_anchor": {
+        "right": 399,
+        "bottom": 74
+      },
+      "normalized": {
+        "x": 0.77969,
+        "y": 0.90741,
+        "w": 0.0125,
+        "h": 0.02407
+      },
+      "dominant_rgb": [
+        62,
+        122,
+        155
+      ],
+      "dominant_hex": "#3E7A9B",
+      "opaque_px": 132,
+      "note": "暗色显示",
+      "assets": {
+        "png": "weather_icon_next.png",
+        "png_x8": "hd_png_x8/weather_icon_next.png",
+        "svg": "hd_svg/weather_icon_next.svg",
+        "scale_note": "矢量重绘，png_x8 由 svg 渲染，可再放大"
+      }
+    },
+    {
+      "id": "weather_icon_last",
+      "name": "天气图标·第三格（多云）",
+      "group": "bottom_right",
+      "anchor": "bottom-right",
+      "box": {
+        "x": 1533,
+        "y": 980,
+        "w": 30,
+        "h": 26,
+        "right": 1562,
+        "bottom": 1005
+      },
+      "center": {
+        "x": 1547.5,
+        "y": 992.5
+      },
+      "offset_from_anchor": {
+        "right": 357,
+        "bottom": 74
+      },
+      "normalized": {
+        "x": 0.79844,
+        "y": 0.90741,
+        "w": 0.01562,
+        "h": 0.02407
+      },
+      "dominant_rgb": [
+        63,
+        113,
+        142
+      ],
+      "dominant_hex": "#3F718E",
+      "opaque_px": 157,
+      "note": "暗色显示",
+      "assets": {
+        "png": "weather_icon_last.png",
+        "png_x8": "hd_png_x8/weather_icon_last.png",
+        "svg": "hd_svg/weather_icon_last.svg",
+        "scale_note": "矢量重绘，png_x8 由 svg 渲染，可再放大"
+      }
+    },
+    {
+      "id": "minimap",
+      "name": "小地图圆盘",
+      "group": "bottom_right",
+      "anchor": "bottom-right",
+      "box": {
+        "x": 1605,
+        "y": 781,
+        "w": 239,
+        "h": 239,
+        "right": 1843,
+        "bottom": 1019
+      },
+      "center": {
+        "x": 1724.0,
+        "y": 900.0
+      },
+      "offset_from_anchor": {
+        "right": 76,
+        "bottom": 60
+      },
+      "normalized": {
+        "x": 0.83594,
+        "y": 0.72315,
+        "w": 0.12448,
+        "h": 0.2213
+      },
+      "circle": {
+        "cx": 1724.0,
+        "cy": 900.0,
+        "r": 119.0,
+        "diameter": 238.0
+      },
+      "dominant_rgb": [
+        75,
+        72,
+        61
+      ],
+      "dominant_hex": "#4B483D",
+      "opaque_px": 44277,
+      "note": "正圆，圆心 (1724, 900)，半径 119px（包围盒 239px，含端点像素）",
+      "assets": {
+        "png": "minimap.png",
+        "png_x8": "hd_png_x8/minimap.png",
+        "scale_note": "只做了插值放大，有纹理，放大后是平滑不是清晰"
+      }
+    },
+    {
+      "id": "compass_north",
+      "name": "小地图北向标（N）",
+      "group": "bottom_right",
+      "anchor": "bottom-right",
+      "box": {
+        "x": 1689,
+        "y": 760,
+        "w": 72,
+        "h": 26,
+        "right": 1760,
+        "bottom": 785
+      },
+      "center": {
+        "x": 1724.5,
+        "y": 772.5
+      },
+      "offset_from_anchor": {
+        "right": 159,
+        "bottom": 294
+      },
+      "normalized": {
+        "x": 0.87969,
+        "y": 0.7037,
+        "w": 0.0375,
+        "h": 0.02407
+      },
+      "dominant_rgb": [
+        107,
+        134,
+        152
+      ],
+      "dominant_hex": "#6B8698",
+      "opaque_px": 878,
+      "note": "半透明灰三角，顶点 (1724, 762)，压在圆盘正上方",
+      "assets": {
+        "png": "compass_north.png",
+        "png_x8": "hd_png_x8/compass_north.png",
+        "scale_note": "只做了插值放大，有纹理，放大后是平滑不是清晰"
+      }
+    },
+    {
+      "id": "minimap_player_arrow",
+      "name": "小地图·玩家箭头",
+      "group": "bottom_right",
+      "anchor": "bottom-right",
+      "box": {
+        "x": 1717,
+        "y": 894,
+        "w": 15,
+        "h": 11,
+        "right": 1731,
+        "bottom": 904
+      },
+      "center": {
+        "x": 1724.0,
+        "y": 899.0
+      },
+      "offset_from_anchor": {
+        "right": 188,
+        "bottom": 175
+      },
+      "normalized": {
+        "x": 0.89427,
+        "y": 0.82778,
+        "w": 0.00781,
+        "h": 0.01019
+      },
+      "dominant_rgb": [
+        243,
+        245,
+        42
+      ],
+      "dominant_hex": "#F3F52A",
+      "opaque_px": 90,
+      "note": "黄色三角，位于圆心 (1724,900)",
+      "assets": {
+        "png": "minimap_player_arrow.png",
+        "png_x8": "hd_png_x8/minimap_player_arrow.png",
+        "svg": "hd_svg/minimap_player_arrow.svg",
+        "scale_note": "矢量重绘，png_x8 由 svg 渲染，可再放大"
+      }
+    },
+    {
+      "id": "minimap_marker_shrine",
+      "name": "小地图·神庙标记",
+      "group": "bottom_right",
+      "anchor": "bottom-right",
+      "box": {
+        "x": 1675,
+        "y": 860,
+        "w": 29,
+        "h": 30,
+        "right": 1703,
+        "bottom": 889
+      },
+      "center": {
+        "x": 1689.0,
+        "y": 874.5
+      },
+      "offset_from_anchor": {
+        "right": 216,
+        "bottom": 190
+      },
+      "normalized": {
+        "x": 0.8724,
+        "y": 0.7963,
+        "w": 0.0151,
+        "h": 0.02778
+      },
+      "dominant_rgb": [
+        93,
+        178,
+        223
+      ],
+      "dominant_hex": "#5DB2DF",
+      "opaque_px": 161,
+      "note": "蓝色菱形，核心 22x22，含辉光 29x30",
+      "assets": {
+        "png": "minimap_marker_shrine.png",
+        "png_x8": "hd_png_x8/minimap_marker_shrine.png",
+        "scale_note": "只做了插值放大，有纹理，放大后是平滑不是清晰"
+      }
+    },
+    {
+      "id": "sensor_active",
+      "name": "希卡感应器（激活状态）",
+      "state": "active",
+      "note": "第一张截图里的 disk_sheikah_sensor 是熄灭状态，位置相同",
+      "circle": {
+        "cx": 1547.6,
+        "cy": 813.0,
+        "r_ring_in": 26.0,
+        "r_ring_out": 28.2,
+        "r_disk": 28.6,
+        "r_glow": 40.0,
+        "r_glyph_max": 19.5,
+        "fit_residual_px": 0.87
+      },
+      "box": {
+        "x": 1507,
+        "y": 772,
+        "w": 82,
+        "h": 83,
+        "right": 1588,
+        "bottom": 854
+      },
+      "offset_from_anchor": {
+        "right": 331,
+        "bottom": 225
+      },
+      "colors": {
+        "bright": "#8AE9FE",
+        "disk_composite": "#29536B",
+        "glow_tint": "#3FC8FF",
+        "background_sand": "#5C7462"
+      },
+      "blending": "sensor_active.png 用普通 alpha；sensor_active_glow_add.png 只存辉光增量，要用 screen / lighter 混合——辉光是加法光",
+      "caveat": "盘面是半透明的，单一背景解不出它的不透明度（沙地明暗只有 4 级，回归出 alpha>1 无意义）。disk_composite 是它叠在这片沙地上的合成色，换背景需要自己定 opacity",
+      "group": "bottom_right",
+      "anchor": "bottom-right",
+      "source": "screenshot_02_desert_night.png",
+      "replaces_state_of": "disk_sheikah_sensor",
+      "normalized": {
+        "x": 0.7849,
+        "y": 0.71481,
+        "w": 0.04271,
+        "h": 0.07685
+      },
+      "assets": {
+        "png": "sensor_active.png",
+        "png_x8": "hd_png_x8/sensor_active.png",
+        "svg": "hd_svg/sensor_active.svg",
+        "scale_note": "矢量重绘（环按几何画、图标追踪、辉光按实测衰减拟合），可任意放大",
+        "glow_add": "sensor_active_glow_add.png"
+      }
+    },
+    {
+      "id": "sound_active",
+      "name": "声音强度计（激活状态）",
+      "state": "active",
+      "note": "第一张截图里的 disk_sound 是暗淡状态，位置相同",
+      "circle": {
+        "cx": 1547.56,
+        "cy": 932.47,
+        "r_disk": 27.8,
+        "fit_residual_px": 0.3,
+        "fit_points": 145,
+        "outer_glow": false
+      },
+      "box": {
+        "x": 1518,
+        "y": 903,
+        "w": 60,
+        "h": 60,
+        "right": 1577,
+        "bottom": 962
+      },
+      "offset_from_anchor": {
+        "right": 342,
+        "bottom": 117
+      },
+      "colors": {
+        "wave": "#BB55CB",
+        "disk_composite": "#303733",
+        "background_sand": "#566D5D"
+      },
+      "blending": "盘外没有辉光，普通 alpha 即可，不需要加法混合那一套",
+      "caveat": "盘面半透明，单一背景解不出不透明度。disk_composite 是叠在这片沙地上的合成色",
+      "waveform": {
+        "band_top_rel_cy": -11.5,
+        "band_bottom_rel_cy": 12.5,
+        "band_height_px": 24.0,
+        "band_height_ratio": 0.432,
+        "span_x_rel_cx": [
+          -26.6,
+          26.4
+        ],
+        "note": "波形是动态内容，矢量版只是某一帧；自己合成时按这些参数画"
+      },
+      "variants": {
+        "bars": "sound_active.svg —— 逐列还原的矩形竖条，和源图的画法一致",
+        "line": "sound_active_line.svg —— 折线版，顶点在上下包络间交替，描边 1.3px"
+      },
+      "group": "bottom_right",
+      "anchor": "bottom-right",
+      "source": "screenshot_02_desert_night.png",
+      "replaces_state_of": "disk_sound",
+      "normalized": {
+        "x": 0.79063,
+        "y": 0.83611,
+        "w": 0.03125,
+        "h": 0.05556
+      },
+      "assets": {
+        "png": "sound_active.png",
+        "png_x8": "hd_png_x8/sound_active.png",
+        "svg": "hd_svg/sound_active.svg",
+        "scale_note": "矢量重绘（波形逐列还原成矩形竖条，亚像素柱顶），可任意放大",
+        "svg_line": "hd_svg/sound_active_line.svg",
+        "png_x8_line": "hd_png_x8/sound_active_line.png"
+      }
+    }
+  ],
+  "sources": {
+    "微信图片_20260819211818_95_2.jpg": "第一张，天空背景，右下角圆盘都是暗的",
+    "screenshot_02_desert_night.png": "第二张，沙漠夜景，感应器激活 / 声音计有波形"
+  },
+  "assets_note": "png 为原始尺寸抠图，png_x8 为 8 倍成品，svg 只有纯色图标才有。所有坐标都是相对 canvas（1920x1080 原图）的像素值，与图片实际尺寸无关。",
+  "generated_by": "ui_reference/_export_ui_source.py"
+}

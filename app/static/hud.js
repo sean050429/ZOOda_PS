@@ -52,11 +52,18 @@ const REPLACED = new Set([
   'weather_marker',
   'minimap_player_arrow',   // 我们生成的小地图自带中心指针，会撞
   'minimap_marker_shrine',  // 神庙标记是游戏专有的，照片上没有意义
+  // 布局里另有这两个「激活状态」条目，是上面两个圆盘的另一种状态。
+  // 状态切换已由 ACTIVE_DISKS 处理，单独再画一份会重叠，
+  // 而且它们没有自绘实现，重绘模式下会退回去加载抠图。
+  'sensor_active', 'sound_active',
 ]);
 
 export async function loadLayout() {
   if (layout) return layout;
-  const r = await fetch('/ui_source/ui_layout.json');
+  // 布局随程序走，不放在 ui_source/ —— 那个目录是 gitignore 的，
+  // 刚克隆的仓库里没有，会导致整套 HUD 都渲染不出来（只剩小地图，
+  // 因为它只依赖经纬度）。这份是从截图量出来的坐标数字，不是美术素材。
+  const r = await fetch('/ui_layout.json');
   if (!r.ok) throw new Error('读不到 ui_layout.json');
   layout = await r.json();
   return layout;
