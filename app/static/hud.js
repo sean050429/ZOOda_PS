@@ -182,19 +182,27 @@ function renderBanner(scale) {
  * 尺寸和位置仍取自 ui_layout.json，只是像素不再来自原作。 */
 
 const DIAL_BASE = 'rgb(10,12,14)';        // 盘底，与温度叠加层同色
-const DIAL_NEUTRAL = [58, 74, 85];        // 常温段刻度
-const DIAL_WARM = [240, 138, 24];         // 高温端
-const DIAL_COOL = [122, 220, 232];        // 低温端
-const DIAL_SPAN = 150;                    // 刻度从正上算起向两侧铺开的角度
+
+// 刻度环的着色照原件量出来的分段来，而不是一条连续渐变。
+// 第一版画错就错在这里：只判断了每段「偏橙还是偏青」，没量有多浓，
+// 于是整圈都上了色。实测 12 段里真正着色的只有 3 段 ——
+// 60~120 度橙（彩度 132~143）、240~270 度青（彩度 85），
+// 其余 9 段彩度只有 38~58，那是底色蓝灰本身自带的，并非上色。
+const DIAL_RING = [74, 100, 115];         // 未着色段的底色
+const DIAL_WARM = [189, 118, 46];         // 高温段
+const DIAL_COOL = [114, 189, 199];        // 低温段
+const DIAL_COOL_DIM = [84, 129, 142];     // 低温段与底色之间的过渡
+
+// 段序号以正上为 0、顺时针每 30 度一段
+const DIAL_SECTOR_COLOR = {
+  2: DIAL_WARM, 3: DIAL_WARM,
+  7: DIAL_COOL_DIM, 8: DIAL_COOL,
+};
 
 const COMPASS_FILL = 'rgba(108, 132, 144, 0.92)';
 const COMPASS_TEXT = '#C2E9EF';
 
-function mix(a, b, t) {
-  return `rgb(${a.map((v, i) => Math.round(v + (b[i] - v) * t)).join(',')})`;
-}
-
-/** 温度表盘的盘面：近黑底 + 12 段刻度，右侧转橙、左侧转青。 */
+/** 温度表盘的盘面：近黑底 + 12 段刻度，只有高低温两端着色。 */
 function drawTempDialBase(ctx, w) {
   const c = w / 2;
   ctx.clearRect(0, 0, w, w);
@@ -207,13 +215,10 @@ function drawTempDialBase(ctx, w) {
   const outer = c * 0.93;
   const gap = 3;                     // 段间留缝，才有「刻度」的观感
   for (let i = 0; i < 12; i++) {
-    const start = i * 30;
-    const mid = start + 15;
-    // 以正上为 0，右手边为正；离常温越远，颜色越浓
-    const signed = mid > 180 ? mid - 360 : mid;
-    const t = Math.min(1, Math.abs(signed) / DIAL_SPAN);
-    ctx.fillStyle = mix(DIAL_NEUTRAL, signed >= 0 ? DIAL_WARM : DIAL_COOL, t);
+    const rgb = DIAL_SECTOR_COLOR[i] || DIAL_RING;
+    ctx.fillStyle = `rgb(${rgb.join(',')})`;
 
+    const start = i * 30;
     const a0 = ((start + gap / 2) - 90) * Math.PI / 180;
     const a1 = ((start + 30 - gap / 2) - 90) * Math.PI / 180;
     ctx.beginPath();
