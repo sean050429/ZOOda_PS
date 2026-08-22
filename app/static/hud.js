@@ -123,7 +123,7 @@ export function renderHud() {
       const act = ACTIVE_DISKS[el.id];
       if (act) {
         const p2 = place(act.box, el.anchor, scale);
-        root.appendChild(blackenedDisk(act.src, p2, el.name || el.id, act.glow));
+        root.appendChild(blackenedDisk(act.src, p2, el.name || el.id, act.glow, act.dim));
         continue;
       }
       root.appendChild(blackenedDisk(`/ui_source/${src}`, pos, el.name || el.id));
@@ -273,6 +273,9 @@ const ACTIVE_DISKS = {
     src: '/ui_source/active/sensor_active_x8.png',
     glow: '/ui_source/active/sensor_active_glow_add.png',
     box: { x: 1507, y: 772, w: 82, h: 83 },
+    // 激活素材自带亮青外环和纹样，压黑之后整体仍比另外两个盘抢眼，
+    // 统一乘一个系数压下来。压的是压黑之后的结果，所以底色不受影响。
+    dim: 0.6,
   },
   disk_sound: {
     src: '/ui_source/active/sound_active_x8.png',
@@ -360,7 +363,7 @@ function applyGlow(ctx, glowImg, px) {
   ctx.restore();
 }
 
-function blackenedDisk(src, pos, alt, glowSrc) {
+function blackenedDisk(src, pos, alt, glowSrc, dim = 1) {
   const cv = document.createElement('canvas');
   cv.className = 'hud-item';
   cv.title = alt;
@@ -377,7 +380,7 @@ function blackenedDisk(src, pos, alt, glowSrc) {
     // 辉光必须在压黑之前叠。反过来的话，辉光铺满整个盘面把底色提亮，
     // 压黑已经做完了管不住它，结果这个盘明显比另外两个亮。
     const finish = () => {
-      blackenInPlace(ctx, px);
+      blackenInPlace(ctx, px, dim);
     };
     if (!glowSrc) { finish(); return; }
     const g = new Image();
@@ -390,7 +393,7 @@ function blackenedDisk(src, pos, alt, glowSrc) {
 }
 
 /** 就地把画布压成黑底：减去主色再放大反差。 */
-function blackenInPlace(ctx, px) {
+function blackenInPlace(ctx, px, dim = 1) {
     const data = ctx.getImageData(0, 0, px, px);
     const d = data.data;
     const bg = dominantColor(d);
@@ -398,7 +401,7 @@ function blackenInPlace(ctx, px) {
     for (let i = 0; i < d.length; i += 4) {
       if (d[i + 3] === 0) continue;
       for (let k = 0; k < 3; k++) {
-        const v = (d[i + k] - bg[k]) * DISK_GAIN + DISK_FLOOR[k];
+        const v = ((d[i + k] - bg[k]) * DISK_GAIN + DISK_FLOOR[k]) * dim;
         d[i + k] = v < 0 ? 0 : v > 255 ? 255 : v;
       }
     }
@@ -579,6 +582,10 @@ window.addEventListener('resize', () => renderHud());
 
 const BANNER_FONT_STACK =
   '"Noto Serif SC", "Songti SC", "Source Han Serif SC", "PT Serif", serif';
+// 时间和天气同色。改这里要连 style.css 的 .hud-clock 一起改 ——
+// 预览走 CSS、导出走画布，两边各有一份。
+const CLOCK_COLOR = '#5FC8F0';
+
 const UI_FONT_STACK =
   '"Trebuchet MS", "Hiragino Sans GB", "PingFang SC", system-ui, sans-serif';
 
@@ -592,24 +599,14 @@ function loadImage(src) {
 }
 
 /** 把一张圆盘按黑底规则处理好，返回可直接 drawImage 的画布。 */
-function blackenDiskToCanvas(img, px, glowImg) {
+function blackenDiskToCanvas(img, px, glowImg, dim = 1) {
   const cv = document.createElement('canvas');
   cv.width = px;
   cv.height = px;
   const ctx = cv.getContext('2d');
   ctx.drawImage(img, 0, 0, px, px);
   if (glowImg) applyGlow(ctx, glowImg, px);   // 先叠辉光，再压黑
-  const data = ctx.getImageData(0, 0, px, px);
-  const d = data.data;
-  const bg = dominantColor(d);
-  for (let i = 0; i < d.length; i += 4) {
-    if (d[i + 3] === 0) continue;
-    for (let k = 0; k < 3; k++) {
-      const v = (d[i + k] - bg[k]) * DISK_GAIN + DISK_FLOOR[k];
-      d[i + k] = v < 0 ? 0 : v > 255 ? 255 : v;
-    }
-  }
-  ctx.putImageData(data, 0, 0);
+  blackenInPlace(ctx, px, dim);
   return cv;
 }
 
@@ -715,7 +712,7 @@ export async function drawHudOnCanvas(ctx, width, height) {
       const px = Math.max(24, Math.round(p2.w));
       const base = await loadImage(act.src);
       const glow = act.glow ? await loadImage(act.glow) : null;
-      ctx.drawImage(blackenDiskToCanvas(base, px, glow), q.x, q.y, p2.w, p2.h);
+      ctx.drawImage(blackenDiskToCanvas(base, px, glow, act.dim), q.x, q.y, p2.w, p2.h);
       continue;
     }
 
@@ -820,7 +817,7 @@ function drawClockOn(ctx, scale, toXY) {
   ctx.letterSpacing = `${pos.h * 0.06}px`;
   ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
-  ctx.fillStyle = '#F6F0D8';
+  ctx.fillStyle = CLOCK_COLOR;
   withShadow(ctx, 3 * scale * 4, 0.75, scale * 4, () => {
     ctx.fillText(hudState.clockText, x, y + pos.h / 2);
   });
