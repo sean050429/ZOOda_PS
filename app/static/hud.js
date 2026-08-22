@@ -120,6 +120,12 @@ export function renderHud() {
       continue;
     }
     if (el.id.startsWith('disk_')) {
+      const act = ACTIVE_DISKS[el.id];
+      if (act) {
+        const p2 = place(act.box, el.anchor, scale);
+        root.appendChild(blackenedDisk(act.src, p2, el.name || el.id, act.glow));
+        continue;
+      }
       root.appendChild(blackenedDisk(`/ui_source/${src}`, pos, el.name || el.id));
       continue;
     }
@@ -253,6 +259,27 @@ function drawCompassBase(ctx, w, h) {
   ctx.fillText('N', w / 2, h * 0.62);
 }
 
+/* 原版模式下这两个圆盘改用「激活状态」的抠图。
+ *
+ * 主 ui_layout.json 那份是从第一张截图抠的，感应器和声音计当时都是
+ * 熄灭状态，看着很闷。另一份参考素材从沙漠夜景那张截出了点亮状态。
+ *
+ * box 直接用激活素材自己的坐标（同为 1920x1080 画布、同样右下角锚定）：
+ * 感应器那张多留了辉光边距，所以框比圆盘大一圈，用原来的框会被裁掉辉光。
+ * 实测圆心对得上 —— 激活版 (1547.6, 813) 正是原框 (1519,784,58,58) 的中心。
+ */
+const ACTIVE_DISKS = {
+  disk_sheikah_sensor: {
+    src: '/ui_source/active/sensor_active_x8.png',
+    glow: '/ui_source/active/sensor_active_glow_add.png',
+    box: { x: 1507, y: 772, w: 82, h: 83 },
+  },
+  disk_sound: {
+    src: '/ui_source/active/sound_active_x8.png',
+    box: { x: 1518, y: 903, w: 60, h: 60 },
+  },
+};
+
 // 这两个的自绘实现在本文件里，其余在 icons.js。合起来覆盖全部元件。
 const EXTRA_DRAWN = {
   disk_temperature: (ctx, w, h) => drawTempDialBase(ctx, w),
@@ -307,7 +334,33 @@ function drawnItem(drawer, pos, alt) {
   return cv;
 }
 
-function blackenedDisk(src, pos, alt) {
+/* 把加法辉光叠上去。
+ *
+ * 辉光素材是「黑底上的亮光」，整张不透明。直接用 lighter 叠会出事：
+ * lighter 连 alpha 一起相加，源 alpha 255 + 目标 0 = 255，于是四角
+ * 透明的地方被强行变成不透明黑，圆盘外面就多出一个黑方块。
+ * 所以先按亮度算出 alpha，黑的地方彻底透明，再叠。
+ */
+function applyGlow(ctx, glowImg, px) {
+  const tmp = document.createElement('canvas');
+  tmp.width = px;
+  tmp.height = px;
+  const tctx = tmp.getContext('2d');
+  tctx.drawImage(glowImg, 0, 0, px, px);
+  const g = tctx.getImageData(0, 0, px, px);
+  const d = g.data;
+  for (let i = 0; i < d.length; i += 4) {
+    d[i + 3] = Math.max(d[i], d[i + 1], d[i + 2]);
+  }
+  tctx.putImageData(g, 0, 0);
+
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  ctx.drawImage(tmp, 0, 0);
+  ctx.restore();
+}
+
+function blackenedDisk(src, pos, alt, glowSrc) {
   const cv = document.createElement('canvas');
   cv.className = 'hud-item';
   cv.title = alt;
@@ -333,6 +386,12 @@ function blackenedDisk(src, pos, alt) {
       }
     }
     ctx.putImageData(data, 0, 0);
+
+    if (glowSrc) {
+      const g = new Image();
+      g.onload = () => { applyGlow(ctx, g, px); };
+      g.src = glowSrc;
+    }
   };
   img.src = src;
   return cv;
@@ -525,7 +584,7 @@ function loadImage(src) {
 }
 
 /** 把一张圆盘按黑底规则处理好，返回可直接 drawImage 的画布。 */
-function blackenDiskToCanvas(img, px) {
+function blackenDiskToCanvas(img, px, glowImg) {
   const cv = document.createElement('canvas');
   cv.width = px;
   cv.height = px;
@@ -542,6 +601,7 @@ function blackenDiskToCanvas(img, px) {
     }
   }
   ctx.putImageData(data, 0, 0);
+  if (glowImg) applyGlow(ctx, glowImg, px);
   return cv;
 }
 
@@ -636,6 +696,18 @@ export async function drawHudOnCanvas(ctx, width, height) {
       if (el.id === 'disk_temperature') {
         drawDial(ctx, { left: x, top: y, w: pos.w, h: pos.h }, off.width);
       }
+      continue;
+    }
+
+    // 原版模式下这两个盘换成激活状态的素材，框也用它自己的
+    const act = el.id.startsWith('disk_') ? ACTIVE_DISKS[el.id] : null;
+    if (act) {
+      const p2 = place(act.box, el.anchor, scale);
+      const q = toXY(p2);
+      const px = Math.max(24, Math.round(p2.w));
+      const base = await loadImage(act.src);
+      const glow = act.glow ? await loadImage(act.glow) : null;
+      ctx.drawImage(blackenDiskToCanvas(base, px, glow), q.x, q.y, p2.w, p2.h);
       continue;
     }
 
