@@ -36,6 +36,7 @@ const vBannerY = document.getElementById('v-banner-y');
 
 const hudPanel = document.getElementById('hud-panel');
 const hudOn = document.getElementById('hud-on');
+const iconMode = document.getElementById('icon-mode');
 const hudStatus = document.getElementById('hud-status');
 const sHudScale = document.getElementById('s-hud-scale');
 const sHearts = document.getElementById('s-hearts');
@@ -623,6 +624,16 @@ sBannerX.addEventListener('input', () => {
 sBannerY.addEventListener('input', () => {
   hudState.bannerY = Number(sBannerY.value) / 100;
   vBannerY.textContent = `${sBannerY.value}%`;
+  paintHud();
+});
+
+/* 重绘 / 原版 切换。重绘是默认，也是唯一不依赖 ui_source 的模式。 */
+iconMode.addEventListener('click', (e) => {
+  const btn = e.target.closest('.seg-btn');
+  if (!btn) return;
+  hudState.useOriginal = btn.dataset.mode === 'original';
+  iconMode.querySelectorAll('.seg-btn').forEach((b) =>
+    b.classList.toggle('is-on', b === btn));
   paintHud();
 });
 

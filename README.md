@@ -27,19 +27,73 @@ HUD 各元件的位置跟随游戏原作布局，不单独调整 —— 坐标�
 
 ## 快速开始
 
+需要 Python 3.10 以上。
+
+### macOS / Linux
+
 ```bash
 python3 -m venv .venv
 ./.venv/bin/pip install -r requirements.txt
 ./.venv/bin/python scripts/fetch_font.py     # 抓地名标题用的字体，约 3 MB
-./.venv/bin/uvicorn app.main:app --reload --port 8000
+./.venv/bin/uvicorn app.main:app --reload --reload-dir app --port 8000
 ```
 
-抓字体这步可以跳过 —— 跳了标题会退回系统自带的衬线字体，功能不受影响，
-只是换机器时字形会不一致。
+### Windows（PowerShell）
 
-打开 <http://localhost:8000>。界面是左右两栏：左边只放照片，所有调节控件都在右边；窗口窄于 1180px 时自动改成上下排列。
+```powershell
+py -3 -m venv .venv
+.\.venv\Scripts\pip.exe install -r requirements.txt
+.\.venv\Scripts\python.exe scripts\fetch_font.py
+.\.venv\Scripts\uvicorn.exe app.main:app --reload --reload-dir app --port 8000
+```
+
+直接调 `.venv\Scripts\` 下的可执行文件，不用 `activate`，因此不受
+PowerShell 执行策略限制。`py -3` 换成 `python` 也可以，前提是它指向
+Python 3。
+
+> Windows 这套命令是按依赖情况推导的，**没有在 Windows 机器上实跑过**。
+> 已核对的部分：代码里没有平台相关写法或写死的 unix 路径；
+> `pillow-heif` 有 `win_amd64` / `win_arm64` 轮子；
+> `uvicorn[standard]` 里的 `uvloop` 带 `sys_platform != "win32"` 标记，
+> pip 会自动跳过，不会导致安装失败。
+
+抓字体这步可以跳过 —— 跳了标题会退回系统自带的衬线字体，功能不受影响，
+只是换机器时字形会不一致。Windows 上没有 Songti SC，跳过的话会退到系统
+的中文衬线字体，字形差异更明显，建议别跳。
+
+### 两点要注意
+
+**`--reload-dir app` 不要省。** 不加的话 uvicorn 会盯着整个项目目录，
+而每渲染一次小地图都会往 `cache/tiles/` 写瓦片，服务就会被自己的
+缓存写入反复重启，表现为请求中途断掉。
+
+**这条命令要一直开着。** 它是前台进程，关掉终端窗口服务就停了。
+
+---
+
+服务起来后打开 <http://localhost:8000>。界面是左右两栏：左边只放照片，
+所有调节控件都在右边；窗口窄于 1180px 时自动改成上下排列。
 
 首次生成小地图需要 3~6 秒下载地图瓦片，之后同一区域走本地缓存，约 0.1 秒。
+
+### 打不开怎么办
+
+浏览器报「localhost 拒绝了请求」（`ERR_CONNECTION_REFUSED`）只有一个
+含义：那个端口上没有程序在监听，也就是服务没跑起来或者已经退出了。
+先确认端口状态：
+
+```bash
+lsof -nP -iTCP:8000 -sTCP:LISTEN
+```
+
+Windows 用：
+
+```powershell
+netstat -ano | findstr :8000
+```
+
+没有输出就是服务没在跑，重新执行上面的启动命令即可。有输出但页面仍打不开，
+才需要往端口冲突或代码报错的方向查 —— 这时看启动命令那个终端窗口的输出。
 
 ---
 
@@ -64,12 +118,14 @@ python3 -m venv .venv
 | # | 功能 | 说明 |
 |---|---|---|
 | 9 | **天气图标** | 天气目前是文字。原作那条胶囊是三格预报图标，要画成 SVG。`weather.py` 已经把 WMO 代码归类成 clear / partly / cloudy / fog / drizzle / rain / snow / thunder 八种，直接对应图标即可 |
-| 10 | **重绘剩余游戏素材** | HUD 上 11 个元件里，7 个已是矢量重绘，4 个（三个希卡圆盘、指北条）仍是游戏原图直接抠的，成品发布前必须换掉 |
+
 | 11 | **其他游戏模版** | 文档里的拓展功能，架构上预留 |
 
 ### 素材来源
 
-HUD 元件放在 `ui_source/`（已 gitignore），由 `ui_layout.json` 描述每个元件在 1920x1080 参考图上的像素位置与锚点分组。其中标注了 `svg` 的是矢量重绘版本，可用于成品；只有 `png` 的是游戏截图直接抠图，**仅供本地对照排版**。
+**默认的重绘模式不需要 `ui_source/`** —— 每个元件都有代码里的自绘实现，配色是从原件采样得到的。面板上可以切到「原版」对照，那需要 `ui_source/` 存在。
+
+原版素材放在 `ui_source/`（已 gitignore），由 `ui_layout.json` 描述每个元件在 1920x1080 参考图上的像素位置与锚点分组。其中标注了 `svg` 的是矢量重绘版本，可用于成品；只有 `png` 的是游戏截图直接抠图，**仅供本地对照排版**。
 
 小地图的箭头形状与配色取自 `Zelda_photo` 项目的 botw 主题（`themes/botw/theme.json` 的 `slots.minimap.pin`）。
 
@@ -183,4 +239,4 @@ cache/             瓦片与地名缓存（gitignore）
 
 本项目与任天堂无关。《塞尔达传说》为任天堂的商标。项目的目标是模仿视觉风格，不分发游戏的任何素材、字体或商标 —— 仓库中不包含任何游戏素材。
 
-需要说明的是，开发过程中会用一张游戏截图作为排版参照，从中裁出的元件放在本地的 `ui_source/` 目录（已 gitignore，不会进入版本控制）。目前 HUD 上仍有 4 个元件直接使用这些裁图，成品发布前会全部替换为矢量重绘版本。
+需要说明的是，开发过程中会用一张游戏截图作为排版参照，从中裁出的元件放在本地的 `ui_source/` 目录（已 gitignore，不会进入版本控制）。默认的重绘模式下不加载其中任何文件；只有手动切到「原版」对照时才会用到。

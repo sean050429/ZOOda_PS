@@ -10,6 +10,10 @@
 const overlay = document.getElementById('overlay');
 const stage = document.getElementById('stage');
 
+// 小地图接口带 24 小时缓存头。覆盖范围的算法改过之后，旧缓存里那些图
+// 是按老规则出的，必须让 URL 变一下才能作废。改算法就把这个数字 +1。
+const MAP_VER = 2;
+
 export const mapState = {
   enabled: true,
   x: 0.16,        // 圆心位置，占照片宽/高的比例
@@ -138,11 +142,11 @@ function fetchImage() {
   // 按屏幕实际像素请求，高分屏上才不糊；服务端上限 900
   const px = Math.round(mapState.diameter * stage.clientWidth *
                         (window.devicePixelRatio || 1));
-  const size = clamp(px, 120, 900);
+  const size = clamp(px, 120, 2000);
 
   const url = `/api/minimap?lat=${mapState.lat}&lon=${mapState.lon}` +
               `&zoom=${mapState.zoom}&size=${size}&posterize=${mapState.posterize}` +
-              `&palette=${encodeURIComponent(mapState.palette)}`;
+              `&palette=${encodeURIComponent(mapState.palette)}&v=${MAP_VER}`;
 
   const token = ++pending;
   el.classList.add('is-loading');
@@ -178,10 +182,12 @@ export async function drawMinimapOnCanvas(ctx, width, height) {
   if (!mapState.enabled || mapState.lat === null || mapState.lon === null) return;
 
   const d = mapState.diameter * width;
-  const size = Math.round(Math.min(900, Math.max(120, d)));
+  // size 只决定输出清晰度，不影响覆盖范围（那个由 zoom 定），
+  // 所以这里按导出尺寸放开上限，让原图分辨率下的小地图不糊
+  const size = Math.round(Math.min(2000, Math.max(120, d)));
   const url = `/api/minimap?lat=${mapState.lat}&lon=${mapState.lon}` +
               `&zoom=${mapState.zoom}&size=${size}&posterize=${mapState.posterize}` +
-              `&palette=${encodeURIComponent(mapState.palette)}`;
+              `&palette=${encodeURIComponent(mapState.palette)}&v=${MAP_VER}`;
 
   const base = await new Promise((resolve, reject) => {
     const im = new Image();

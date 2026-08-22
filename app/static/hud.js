@@ -11,6 +11,8 @@
 const CANVAS_W = 1920;
 const CANVAS_H = 1080;
 
+import { ICONS } from '/icons.js';
+
 const overlay = document.getElementById('overlay');
 const stage = document.getElementById('stage');
 
@@ -22,6 +24,9 @@ export const hudState = {
   weatherText: '晴',  // 只放天气，温度走温度表盘
   clockText: '13:35',
   temperature: null, // 摄氏度，null 表示还没查到
+  // false = 用自绘图标（默认），true = 用 ui_source 里的游戏抠图。
+  // 自绘模式完全不碰 ui_source，所以没有那个目录也能正常出图。
+  useOriginal: false,
 
   bannerOn: true,
   bannerText: '',
@@ -108,7 +113,19 @@ export function renderHud() {
     if (!src) continue;
 
     const pos = place(el.box, el.anchor, scale);
+
+    const drawer = drawerFor(el.id);
+    if (drawer) {
+      root.appendChild(drawnItem(drawer, pos, el.name || el.id));
+      continue;
+    }
     if (el.id.startsWith('disk_')) {
+      const act = ACTIVE_DISKS[el.id];
+      if (act) {
+        const p2 = place(act.box, el.anchor, scale);
+        root.appendChild(blackenedDisk(act.src, p2, el.name || el.id, act.glow, act.dim));
+        continue;
+      }
       root.appendChild(blackenedDisk(`/ui_source/${src}`, pos, el.name || el.id));
       continue;
     }
@@ -171,6 +188,116 @@ function renderBanner(scale) {
   }
 }
 
+/* ---------------- 自己重绘的元件 ---------------- */
+
+/* 这两个原来直接用游戏截图的抠图，现在改成按同样的视觉语言自己画。
+ * 尺寸和位置仍取自 ui_layout.json，只是像素不再来自原作。 */
+
+const DIAL_BASE = 'rgb(10,12,14)';        // 盘底，与温度叠加层同色
+
+// 刻度环的着色照原件量出来的分段来，而不是一条连续渐变。
+// 第一版画错就错在这里：只判断了每段「偏橙还是偏青」，没量有多浓，
+// 于是整圈都上了色。实测 12 段里真正着色的只有 3 段 ——
+// 60~120 度橙（彩度 132~143）、240~270 度青（彩度 85），
+// 其余 9 段彩度只有 38~58，那是底色蓝灰本身自带的，并非上色。
+const DIAL_RING = [74, 100, 115];         // 未着色段的底色
+const DIAL_WARM = [189, 118, 46];         // 高温段
+const DIAL_COOL = [114, 189, 199];        // 低温段
+const DIAL_COOL_DIM = [84, 129, 142];     // 低温段与底色之间的过渡
+
+// 段序号以正上为 0、顺时针每 30 度一段
+const DIAL_SECTOR_COLOR = {
+  2: DIAL_WARM, 3: DIAL_WARM,
+  7: DIAL_COOL_DIM, 8: DIAL_COOL,
+};
+
+const COMPASS_FILL = 'rgba(108, 132, 144, 0.92)';
+const COMPASS_TEXT = '#C2E9EF';
+
+/** 温度表盘的盘面：近黑底 + 12 段刻度，只有高低温两端着色。 */
+function drawTempDialBase(ctx, w) {
+  const c = w / 2;
+  ctx.clearRect(0, 0, w, w);
+  ctx.beginPath();
+  ctx.arc(c, c, c * 0.98, 0, Math.PI * 2);
+  ctx.fillStyle = DIAL_BASE;
+  ctx.fill();
+
+  const inner = c * 0.62;
+  const outer = c * 0.93;
+  const gap = 3;                     // 段间留缝，才有「刻度」的观感
+  for (let i = 0; i < 12; i++) {
+    const rgb = DIAL_SECTOR_COLOR[i] || DIAL_RING;
+    ctx.fillStyle = `rgb(${rgb.join(',')})`;
+
+    const start = i * 30;
+    const a0 = ((start + gap / 2) - 90) * Math.PI / 180;
+    const a1 = ((start + 30 - gap / 2) - 90) * Math.PI / 180;
+    ctx.beginPath();
+    ctx.arc(c, c, outer, a0, a1);
+    ctx.arc(c, c, inner, a1, a0, true);
+    ctx.closePath();
+    ctx.fill();
+  }
+}
+
+/** 指北条：等腰三角形，顶点在正上中点，底边满宽，中间一个 N。 */
+function drawCompassBase(ctx, w, h) {
+  ctx.clearRect(0, 0, w, h);
+  ctx.beginPath();
+  ctx.moveTo(w / 2, 0);
+  ctx.lineTo(w, h);
+  ctx.lineTo(0, h);
+  ctx.closePath();
+  ctx.fillStyle = COMPASS_FILL;
+  ctx.fill();
+
+  ctx.fillStyle = COMPASS_TEXT;
+  ctx.font = `600 ${h * 0.52}px ${UI_FONT_STACK}`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('N', w / 2, h * 0.62);
+}
+
+/* 原版模式下这两个圆盘改用「激活状态」的抠图。
+ *
+ * 主 ui_layout.json 那份是从第一张截图抠的，感应器和声音计当时都是
+ * 熄灭状态，看着很闷。另一份参考素材从沙漠夜景那张截出了点亮状态。
+ *
+ * box 直接用激活素材自己的坐标（同为 1920x1080 画布、同样右下角锚定）：
+ * 感应器那张多留了辉光边距，所以框比圆盘大一圈，用原来的框会被裁掉辉光。
+ * 实测圆心对得上 —— 激活版 (1547.6, 813) 正是原框 (1519,784,58,58) 的中心。
+ */
+const ACTIVE_DISKS = {
+  disk_sheikah_sensor: {
+    src: '/ui_source/active/sensor_active_x8.png',
+    glow: '/ui_source/active/sensor_active_glow_add.png',
+    box: { x: 1507, y: 772, w: 82, h: 83 },
+    // 激活素材自带亮青外环和纹样，压黑之后整体仍比另外两个盘抢眼，
+    // 统一乘一个系数压下来。压的是压黑之后的结果，所以底色不受影响。
+    dim: 0.6,
+  },
+  disk_sound: {
+    src: '/ui_source/active/sound_active_x8.png',
+    box: { x: 1518, y: 903, w: 60, h: 60 },
+  },
+};
+
+// 这两个的自绘实现在本文件里，其余在 icons.js。合起来覆盖全部元件。
+const EXTRA_DRAWN = {
+  disk_temperature: (ctx, w, h) => drawTempDialBase(ctx, w),
+  compass_north: drawCompassBase,
+};
+
+/** 当前模式下这个元件该怎么画；返回 null 表示走抠图。
+ *
+ * 原版模式必须让每个元件都走抠图，包括温度盘和指北条 —— 一开始
+ * 把这两个写成了两种模式都用自绘，结果切到原版它们不跟着变。 */
+function drawerFor(id) {
+  if (hudState.useOriginal) return null;
+  return EXTRA_DRAWN[id] || ICONS[id] || null;
+}
+
 /* ---------------- 希卡圆盘改黑底 ---------------- */
 
 // 原件的圆盘底色是蓝灰（#3C5A64 一带），和黑底的天气胶囊放一起不统一。
@@ -197,7 +324,46 @@ function dominantColor(d) {
           (bestKey & 15) * 16 + 8];
 }
 
-function blackenedDisk(src, pos, alt) {
+/** 自绘元件：建一块画布，按显示尺寸画上去。 */
+function drawnItem(drawer, pos, alt) {
+  const cv = document.createElement('canvas');
+  cv.className = 'hud-item';
+  cv.title = alt;
+  applyStyle(cv, pos);
+  const dpr = window.devicePixelRatio || 1;
+  cv.width = Math.max(24, Math.round(pos.w * dpr));
+  cv.height = Math.max(12, Math.round(pos.h * dpr));
+  drawer(cv.getContext('2d'), cv.width, cv.height);
+  return cv;
+}
+
+/* 把加法辉光叠上去。
+ *
+ * 辉光素材是「黑底上的亮光」，整张不透明。直接用 lighter 叠会出事：
+ * lighter 连 alpha 一起相加，源 alpha 255 + 目标 0 = 255，于是四角
+ * 透明的地方被强行变成不透明黑，圆盘外面就多出一个黑方块。
+ * 所以先按亮度算出 alpha，黑的地方彻底透明，再叠。
+ */
+function applyGlow(ctx, glowImg, px) {
+  const tmp = document.createElement('canvas');
+  tmp.width = px;
+  tmp.height = px;
+  const tctx = tmp.getContext('2d');
+  tctx.drawImage(glowImg, 0, 0, px, px);
+  const g = tctx.getImageData(0, 0, px, px);
+  const d = g.data;
+  for (let i = 0; i < d.length; i += 4) {
+    d[i + 3] = Math.max(d[i], d[i + 1], d[i + 2]);
+  }
+  tctx.putImageData(g, 0, 0);
+
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  ctx.drawImage(tmp, 0, 0);
+  ctx.restore();
+}
+
+function blackenedDisk(src, pos, alt, glowSrc, dim = 1) {
   const cv = document.createElement('canvas');
   cv.className = 'hud-item';
   cv.title = alt;
@@ -211,6 +377,23 @@ function blackenedDisk(src, pos, alt) {
     const ctx = cv.getContext('2d');
     ctx.drawImage(img, 0, 0, px, px);
 
+    // 辉光必须在压黑之前叠。反过来的话，辉光铺满整个盘面把底色提亮，
+    // 压黑已经做完了管不住它，结果这个盘明显比另外两个亮。
+    const finish = () => {
+      blackenInPlace(ctx, px, dim);
+    };
+    if (!glowSrc) { finish(); return; }
+    const g = new Image();
+    g.onload = () => { applyGlow(ctx, g, px); finish(); };
+    g.onerror = finish;
+    g.src = glowSrc;
+  };
+  img.src = src;
+  return cv;
+}
+
+/** 就地把画布压成黑底：减去主色再放大反差。 */
+function blackenInPlace(ctx, px, dim = 1) {
     const data = ctx.getImageData(0, 0, px, px);
     const d = data.data;
     const bg = dominantColor(d);
@@ -218,14 +401,11 @@ function blackenedDisk(src, pos, alt) {
     for (let i = 0; i < d.length; i += 4) {
       if (d[i + 3] === 0) continue;
       for (let k = 0; k < 3; k++) {
-        const v = (d[i + k] - bg[k]) * DISK_GAIN + DISK_FLOOR[k];
+        const v = ((d[i + k] - bg[k]) * DISK_GAIN + DISK_FLOOR[k]) * dim;
         d[i + k] = v < 0 ? 0 : v > 255 ? 255 : v;
       }
     }
     ctx.putImageData(data, 0, 0);
-  };
-  img.src = src;
-  return cv;
 }
 
 /* ---------------- 温度表盘 ---------------- */
@@ -324,11 +504,17 @@ function renderHearts(scale) {
     const isFull = i < hudState.heartsFull;
     const spec = isFull ? full : (empty || full);
     const box = { ...spec.box, x: row.box.x + i * step, y: row.box.y };
+    const pos = place(box, 'top-left', scale);
+    const drawer = drawerFor(spec.id);
+    if (drawer) {
+      root.appendChild(drawnItem(drawer, pos, isFull ? '满心' : '空心'));
+      continue;
+    }
     const img = document.createElement('img');
     img.className = 'hud-item';
     img.src = `/ui_source/${spec.assets.png_x8 || spec.assets.png}`;
     img.alt = isFull ? '满心' : '空心';
-    applyStyle(img, place(box, 'top-left', scale));
+    applyStyle(img, pos);
     root.appendChild(img);
   }
 }
@@ -396,6 +582,10 @@ window.addEventListener('resize', () => renderHud());
 
 const BANNER_FONT_STACK =
   '"Noto Serif SC", "Songti SC", "Source Han Serif SC", "PT Serif", serif';
+// 时间和天气同色。改这里要连 style.css 的 .hud-clock 一起改 ——
+// 预览走 CSS、导出走画布，两边各有一份。
+const CLOCK_COLOR = '#5FC8F0';
+
 const UI_FONT_STACK =
   '"Trebuchet MS", "Hiragino Sans GB", "PingFang SC", system-ui, sans-serif';
 
@@ -409,23 +599,14 @@ function loadImage(src) {
 }
 
 /** 把一张圆盘按黑底规则处理好，返回可直接 drawImage 的画布。 */
-function blackenDiskToCanvas(img, px) {
+function blackenDiskToCanvas(img, px, glowImg, dim = 1) {
   const cv = document.createElement('canvas');
   cv.width = px;
   cv.height = px;
   const ctx = cv.getContext('2d');
   ctx.drawImage(img, 0, 0, px, px);
-  const data = ctx.getImageData(0, 0, px, px);
-  const d = data.data;
-  const bg = dominantColor(d);
-  for (let i = 0; i < d.length; i += 4) {
-    if (d[i + 3] === 0) continue;
-    for (let k = 0; k < 3; k++) {
-      const v = (d[i + k] - bg[k]) * DISK_GAIN + DISK_FLOOR[k];
-      d[i + k] = v < 0 ? 0 : v > 255 ? 255 : v;
-    }
-  }
-  ctx.putImageData(data, 0, 0);
+  if (glowImg) applyGlow(ctx, glowImg, px);   // 先叠辉光，再压黑
+  blackenInPlace(ctx, px, dim);
   return cv;
 }
 
@@ -509,6 +690,32 @@ export async function drawHudOnCanvas(ctx, width, height) {
 
     const pos = place(el.box, el.anchor, scale);
     const { x, y } = toXY(pos);
+
+    const drawer = drawerFor(el.id);
+    if (drawer) {
+      const off = document.createElement('canvas');
+      off.width = Math.max(24, Math.round(pos.w));
+      off.height = Math.max(12, Math.round(pos.h));
+      drawer(off.getContext('2d'), off.width, off.height);
+      ctx.drawImage(off, x, y, pos.w, pos.h);
+      if (el.id === 'disk_temperature') {
+        drawDial(ctx, { left: x, top: y, w: pos.w, h: pos.h }, off.width);
+      }
+      continue;
+    }
+
+    // 原版模式下这两个盘换成激活状态的素材，框也用它自己的
+    const act = el.id.startsWith('disk_') ? ACTIVE_DISKS[el.id] : null;
+    if (act) {
+      const p2 = place(act.box, el.anchor, scale);
+      const q = toXY(p2);
+      const px = Math.max(24, Math.round(p2.w));
+      const base = await loadImage(act.src);
+      const glow = act.glow ? await loadImage(act.glow) : null;
+      ctx.drawImage(blackenDiskToCanvas(base, px, glow, act.dim), q.x, q.y, p2.w, p2.h);
+      continue;
+    }
+
     const img = await loadImage(`/ui_source/${src}`);
 
     if (el.id.startsWith('disk_')) {
@@ -574,10 +781,13 @@ async function drawHeartsOn(ctx, scale, toXY) {
   const row = byId('hearts_row');
   if (!full || !row) return;
 
-  const fullImg = await loadImage(`/ui_source/${full.assets.png_x8 || full.assets.png}`);
-  const emptyImg = empty
-    ? await loadImage(`/ui_source/${empty.assets.png_x8 || empty.assets.png}`)
-    : fullImg;
+  let fullImg = null, emptyImg = null;
+  if (!drawerFor(full.id)) {
+    fullImg = await loadImage(`/ui_source/${full.assets.png_x8 || full.assets.png}`);
+    emptyImg = empty
+      ? await loadImage(`/ui_source/${empty.assets.png_x8 || empty.assets.png}`)
+      : fullImg;
+  }
 
   for (let i = 0; i < hudState.hearts; i++) {
     const isFull = i < hudState.heartsFull;
@@ -585,6 +795,15 @@ async function drawHeartsOn(ctx, scale, toXY) {
     const box = { ...spec.box, x: row.box.x + i * 30, y: row.box.y };
     const pos = place(box, 'top-left', scale);
     const { x, y } = toXY(pos);
+    const drawer = drawerFor(spec.id);
+    if (drawer) {
+      const off = document.createElement('canvas');
+      off.width = Math.max(12, Math.round(pos.w));
+      off.height = Math.max(12, Math.round(pos.h));
+      drawer(off.getContext('2d'), off.width, off.height);
+      ctx.drawImage(off, x, y, pos.w, pos.h);
+      continue;
+    }
     ctx.drawImage(isFull ? fullImg : emptyImg, x, y, pos.w, pos.h);
   }
 }
@@ -598,7 +817,7 @@ function drawClockOn(ctx, scale, toXY) {
   ctx.letterSpacing = `${pos.h * 0.06}px`;
   ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
-  ctx.fillStyle = '#F6F0D8';
+  ctx.fillStyle = CLOCK_COLOR;
   withShadow(ctx, 3 * scale * 4, 0.75, scale * 4, () => {
     ctx.fillText(hudState.clockText, x, y + pos.h / 2);
   });

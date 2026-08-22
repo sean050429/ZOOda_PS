@@ -31,7 +31,10 @@ TILE_GAP_FILL = (232, 230, 224)
 
 TILE_PX_1X = 256
 TILE_PX_2X = 512
-RETINA_THRESHOLD = 520  # 请求的直径超过这个才值得上 @2x
+# 覆盖多大地理范围只认这个基准，与输出分辨率无关。
+# 原来是拿 size 当基准，于是预览（按舞台宽×dpr 算）和导出（按原图宽算）
+# 请求到不同的 size，覆盖范围就差了一倍 —— 同一张图预览和导出对不上。
+COVERAGE_PX = 480
 
 # 调色预设。走的是「照片调色」那一套 —— 降饱和 + 加褐调 + 压对比 + 叠色，
 # 而不是压色阶。好处是地图原有的层次全部保留，出来是一张被做旧的地图，
@@ -121,15 +124,13 @@ def fetch_area(lat: float, lon: float, zoom: int, size: int) -> Image.Image:
     后者在 size=686 时会抓 5×5=25 张，实际只需要 2×2。
     再加上并发下载，出图从二十多秒降到两三秒。
     """
-    retina = size > RETINA_THRESHOLD
+    # 输出分辨率超过基准时才值得上 @2x，纯粹为清晰度，不影响覆盖范围
+    retina = size > COVERAGE_PX
     tile_px = TILE_PX_2X if retina else TILE_PX_1X
-    scale = tile_px // TILE_PX_1X  # @2x 时每个 CSS 像素有 2 个真实像素
+    scale = tile_px // TILE_PX_1X
 
     fx, fy = deg2tile(lat, lon, zoom)
-    # 覆盖多大地理范围只由 size 决定，跟用不用 @2x 无关。
-    # 若按 tile_px 算，跨过 @2x 阈值时覆盖范围会突然减半 —— 用户拖大小滑块
-    # 就会看到地图比例毫无道理地跳一下。@2x 只该更清晰，不该更放大。
-    half_tiles = size / 2 / TILE_PX_1X
+    half_tiles = COVERAGE_PX / 2 / TILE_PX_1X
 
     tx0, tx1 = math.floor(fx - half_tiles), math.floor(fx + half_tiles)
     ty0, ty1 = math.floor(fy - half_tiles), math.floor(fy + half_tiles)
@@ -154,11 +155,11 @@ def fetch_area(lat: float, lon: float, zoom: int, size: int) -> Image.Image:
 
     cx = (fx - tx0) * tile_px
     cy = (fy - ty0) * tile_px
-    half = size / 2 * scale
+    half = COVERAGE_PX / 2 * scale
     crop = canvas.crop((round(cx - half), round(cy - half),
                         round(cx + half), round(cy + half)))
-    # @2x 相当于超采样，缩回目标尺寸后细节更干净
-    return crop if scale == 1 else crop.resize((size, size), Image.LANCZOS)
+    # 裁出来的永远是同一片地理范围，最后只是缩放到调用方要的分辨率
+    return crop if crop.width == size else crop.resize((size, size), Image.LANCZOS)
 
 
 # ---------------- 风格化 ----------------
