@@ -582,9 +582,11 @@ window.addEventListener('resize', () => renderHud());
 
 const BANNER_FONT_STACK =
   '"Noto Serif SC", "Songti SC", "Source Han Serif SC", "PT Serif", serif';
-// 时间和天气同色。改这里要连 style.css 的 .hud-clock 一起改 ——
-// 预览走 CSS、导出走画布，两边各有一份。
-const CLOCK_COLOR = '#5FC8F0';
+// 时间用白色。天气那条有近黑胶囊垫底，蓝字够清楚；时间没有底衬，
+// 同样的蓝压在亮天空上就读不清了。
+// 改这里要连 style.css 的 .hud-clock 一起改 —— 预览走 CSS、
+// 导出走画布，两边各有一份。
+const CLOCK_COLOR = '#FFFFFF';
 
 const UI_FONT_STACK =
   '"Trebuchet MS", "Hiragino Sans GB", "PingFang SC", system-ui, sans-serif';
