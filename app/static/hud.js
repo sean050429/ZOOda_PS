@@ -253,17 +253,19 @@ function drawCompassBase(ctx, w, h) {
   ctx.fillText('N', w / 2, h * 0.62);
 }
 
-// id → 绘制函数。温度盘和指北条无论哪种模式都用自绘 ——
-// 它们原本就是纯抠图，没有可用的矢量版本。
-const ALWAYS_DRAWN = {
+// 这两个的自绘实现在本文件里，其余在 icons.js。合起来覆盖全部元件。
+const EXTRA_DRAWN = {
   disk_temperature: (ctx, w, h) => drawTempDialBase(ctx, w),
   compass_north: drawCompassBase,
 };
 
-/** 当前模式下这个元件该怎么画；返回 null 表示走抠图。 */
+/** 当前模式下这个元件该怎么画；返回 null 表示走抠图。
+ *
+ * 原版模式必须让每个元件都走抠图，包括温度盘和指北条 —— 一开始
+ * 把这两个写成了两种模式都用自绘，结果切到原版它们不跟着变。 */
 function drawerFor(id) {
-  if (ALWAYS_DRAWN[id]) return ALWAYS_DRAWN[id];
-  return hudState.useOriginal ? null : (ICONS[id] || null);
+  if (hudState.useOriginal) return null;
+  return EXTRA_DRAWN[id] || ICONS[id] || null;
 }
 
 /* ---------------- 希卡圆盘改黑底 ---------------- */
