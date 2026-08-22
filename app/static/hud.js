@@ -374,6 +374,23 @@ function blackenedDisk(src, pos, alt, glowSrc) {
     const ctx = cv.getContext('2d');
     ctx.drawImage(img, 0, 0, px, px);
 
+    // 辉光必须在压黑之前叠。反过来的话，辉光铺满整个盘面把底色提亮，
+    // 压黑已经做完了管不住它，结果这个盘明显比另外两个亮。
+    const finish = () => {
+      blackenInPlace(ctx, px);
+    };
+    if (!glowSrc) { finish(); return; }
+    const g = new Image();
+    g.onload = () => { applyGlow(ctx, g, px); finish(); };
+    g.onerror = finish;
+    g.src = glowSrc;
+  };
+  img.src = src;
+  return cv;
+}
+
+/** 就地把画布压成黑底：减去主色再放大反差。 */
+function blackenInPlace(ctx, px) {
     const data = ctx.getImageData(0, 0, px, px);
     const d = data.data;
     const bg = dominantColor(d);
@@ -386,15 +403,6 @@ function blackenedDisk(src, pos, alt, glowSrc) {
       }
     }
     ctx.putImageData(data, 0, 0);
-
-    if (glowSrc) {
-      const g = new Image();
-      g.onload = () => { applyGlow(ctx, g, px); };
-      g.src = glowSrc;
-    }
-  };
-  img.src = src;
-  return cv;
 }
 
 /* ---------------- 温度表盘 ---------------- */
@@ -590,6 +598,7 @@ function blackenDiskToCanvas(img, px, glowImg) {
   cv.height = px;
   const ctx = cv.getContext('2d');
   ctx.drawImage(img, 0, 0, px, px);
+  if (glowImg) applyGlow(ctx, glowImg, px);   // 先叠辉光，再压黑
   const data = ctx.getImageData(0, 0, px, px);
   const d = data.data;
   const bg = dominantColor(d);
@@ -601,7 +610,6 @@ function blackenDiskToCanvas(img, px, glowImg) {
     }
   }
   ctx.putImageData(data, 0, 0);
-  if (glowImg) applyGlow(ctx, glowImg, px);
   return cv;
 }
 
