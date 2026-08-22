@@ -491,10 +491,11 @@ main {
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
 }
 
-/* 时间按参考图不套框；字色和天气一致，用 colors.weather_icon */
+/* 时间按参考图不套框。字色用白 —— 试过和天气一样的蓝，
+   压在亮天空或浅色路面上读不清，时间没有胶囊底衬托，只能靠字色本身。 */
 .hud-clock {
   justify-content: flex-start;
-  color: #5FC8F0;
+  color: #FFFFFF;
   font-family: "Trebuchet MS", "Hiragino Sans GB", "PingFang SC",
                system-ui, sans-serif;
   font-weight: 600;
