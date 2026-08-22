@@ -11,6 +11,8 @@
 const CANVAS_W = 1920;
 const CANVAS_H = 1080;
 
+import { ICONS } from '/icons.js';
+
 const overlay = document.getElementById('overlay');
 const stage = document.getElementById('stage');
 
@@ -22,6 +24,9 @@ export const hudState = {
   weatherText: '晴',  // 只放天气，温度走温度表盘
   clockText: '13:35',
   temperature: null, // 摄氏度，null 表示还没查到
+  // false = 用自绘图标（默认），true = 用 ui_source 里的游戏抠图。
+  // 自绘模式完全不碰 ui_source，所以没有那个目录也能正常出图。
+  useOriginal: false,
 
   bannerOn: true,
   bannerText: '',
@@ -109,8 +114,9 @@ export function renderHud() {
 
     const pos = place(el.box, el.anchor, scale);
 
-    if (DRAWN[el.id]) {
-      root.appendChild(drawnItem(el.id, pos, el.name || el.id));
+    const drawer = drawerFor(el.id);
+    if (drawer) {
+      root.appendChild(drawnItem(drawer, pos, el.name || el.id));
       continue;
     }
     if (el.id.startsWith('disk_')) {
@@ -247,11 +253,18 @@ function drawCompassBase(ctx, w, h) {
   ctx.fillText('N', w / 2, h * 0.62);
 }
 
-// id → 绘制函数。命中的元件不再加载抠图。
-const DRAWN = {
+// id → 绘制函数。温度盘和指北条无论哪种模式都用自绘 ——
+// 它们原本就是纯抠图，没有可用的矢量版本。
+const ALWAYS_DRAWN = {
   disk_temperature: (ctx, w, h) => drawTempDialBase(ctx, w),
   compass_north: drawCompassBase,
 };
+
+/** 当前模式下这个元件该怎么画；返回 null 表示走抠图。 */
+function drawerFor(id) {
+  if (ALWAYS_DRAWN[id]) return ALWAYS_DRAWN[id];
+  return hudState.useOriginal ? null : (ICONS[id] || null);
+}
 
 /* ---------------- 希卡圆盘改黑底 ---------------- */
 
@@ -280,7 +293,7 @@ function dominantColor(d) {
 }
 
 /** 自绘元件：建一块画布，按显示尺寸画上去。 */
-function drawnItem(id, pos, alt) {
+function drawnItem(drawer, pos, alt) {
   const cv = document.createElement('canvas');
   cv.className = 'hud-item';
   cv.title = alt;
@@ -288,7 +301,7 @@ function drawnItem(id, pos, alt) {
   const dpr = window.devicePixelRatio || 1;
   cv.width = Math.max(24, Math.round(pos.w * dpr));
   cv.height = Math.max(12, Math.round(pos.h * dpr));
-  DRAWN[id](cv.getContext('2d'), cv.width, cv.height);
+  drawer(cv.getContext('2d'), cv.width, cv.height);
   return cv;
 }
 
@@ -419,11 +432,17 @@ function renderHearts(scale) {
     const isFull = i < hudState.heartsFull;
     const spec = isFull ? full : (empty || full);
     const box = { ...spec.box, x: row.box.x + i * step, y: row.box.y };
+    const pos = place(box, 'top-left', scale);
+    const drawer = drawerFor(spec.id);
+    if (drawer) {
+      root.appendChild(drawnItem(drawer, pos, isFull ? '满心' : '空心'));
+      continue;
+    }
     const img = document.createElement('img');
     img.className = 'hud-item';
     img.src = `/ui_source/${spec.assets.png_x8 || spec.assets.png}`;
     img.alt = isFull ? '满心' : '空心';
-    applyStyle(img, place(box, 'top-left', scale));
+    applyStyle(img, pos);
     root.appendChild(img);
   }
 }
@@ -605,11 +624,12 @@ export async function drawHudOnCanvas(ctx, width, height) {
     const pos = place(el.box, el.anchor, scale);
     const { x, y } = toXY(pos);
 
-    if (DRAWN[el.id]) {
+    const drawer = drawerFor(el.id);
+    if (drawer) {
       const off = document.createElement('canvas');
       off.width = Math.max(24, Math.round(pos.w));
       off.height = Math.max(12, Math.round(pos.h));
-      DRAWN[el.id](off.getContext('2d'), off.width, off.height);
+      drawer(off.getContext('2d'), off.width, off.height);
       ctx.drawImage(off, x, y, pos.w, pos.h);
       if (el.id === 'disk_temperature') {
         drawDial(ctx, { left: x, top: y, w: pos.w, h: pos.h }, off.width);
@@ -682,10 +702,13 @@ async function drawHeartsOn(ctx, scale, toXY) {
   const row = byId('hearts_row');
   if (!full || !row) return;
 
-  const fullImg = await loadImage(`/ui_source/${full.assets.png_x8 || full.assets.png}`);
-  const emptyImg = empty
-    ? await loadImage(`/ui_source/${empty.assets.png_x8 || empty.assets.png}`)
-    : fullImg;
+  let fullImg = null, emptyImg = null;
+  if (!drawerFor(full.id)) {
+    fullImg = await loadImage(`/ui_source/${full.assets.png_x8 || full.assets.png}`);
+    emptyImg = empty
+      ? await loadImage(`/ui_source/${empty.assets.png_x8 || empty.assets.png}`)
+      : fullImg;
+  }
 
   for (let i = 0; i < hudState.hearts; i++) {
     const isFull = i < hudState.heartsFull;
@@ -693,6 +716,15 @@ async function drawHeartsOn(ctx, scale, toXY) {
     const box = { ...spec.box, x: row.box.x + i * 30, y: row.box.y };
     const pos = place(box, 'top-left', scale);
     const { x, y } = toXY(pos);
+    const drawer = drawerFor(spec.id);
+    if (drawer) {
+      const off = document.createElement('canvas');
+      off.width = Math.max(12, Math.round(pos.w));
+      off.height = Math.max(12, Math.round(pos.h));
+      drawer(off.getContext('2d'), off.width, off.height);
+      ctx.drawImage(off, x, y, pos.w, pos.h);
+      continue;
+    }
     ctx.drawImage(isFull ? fullImg : emptyImg, x, y, pos.w, pos.h);
   }
 }
