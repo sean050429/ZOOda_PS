@@ -52,11 +52,18 @@ const REPLACED = new Set([
   'weather_marker',
   'minimap_player_arrow',   // 我们生成的小地图自带中心指针，会撞
   'minimap_marker_shrine',  // 神庙标记是游戏专有的，照片上没有意义
+  // 布局里另有这两个「激活状态」条目，是上面两个圆盘的另一种状态。
+  // 状态切换已由 ACTIVE_DISKS 处理，单独再画一份会重叠，
+  // 而且它们没有自绘实现，重绘模式下会退回去加载抠图。
+  'sensor_active', 'sound_active',
 ]);
 
 export async function loadLayout() {
   if (layout) return layout;
-  const r = await fetch('/ui_source/ui_layout.json');
+  // 布局随程序走，不放在 ui_source/ —— 那个目录是 gitignore 的，
+  // 刚克隆的仓库里没有，会导致整套 HUD 都渲染不出来（只剩小地图，
+  // 因为它只依赖经纬度）。这份是从截图量出来的坐标数字，不是美术素材。
+  const r = await fetch('/ui_layout.json');
   if (!r.ok) throw new Error('读不到 ui_layout.json');
   layout = await r.json();
   return layout;
@@ -393,16 +400,25 @@ function blackenedDisk(src, pos, alt, glowSrc, dim = 1) {
 }
 
 /** 就地把画布压成黑底：减去主色再放大反差。 */
+/* 按亮度整体缩放，不能逐通道减主色 —— 那样会扭曲色相。
+ * 盘底 #284868 的蓝分量比绿多，逐通道减掉后蓝被削得更狠，
+ * 青色的感应器纹样就偏绿了（#8AFFFF 变成 #87F8CF）。
+ * 整体缩放时三个通道等比例变化，色相不动。 */
 function blackenInPlace(ctx, px, dim = 1) {
     const data = ctx.getImageData(0, 0, px, px);
     const d = data.data;
     const bg = dominantColor(d);
+    const lumBg = 0.299 * bg[0] + 0.587 * bg[1] + 0.114 * bg[2];
+    const span = Math.max(1, 255 - lumBg);
 
     for (let i = 0; i < d.length; i += 4) {
       if (d[i + 3] === 0) continue;
-      for (let k = 0; k < 3; k++) {
-        const v = ((d[i + k] - bg[k]) * DISK_GAIN + DISK_FLOOR[k]) * dim;
-        d[i + k] = v < 0 ? 0 : v > 255 ? 255 : v;
+      const lum = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+      // 亮度落在主色上的像素归零，越亮保留越多
+      const k = Math.max(0, (lum - lumBg) / span) * DISK_GAIN;
+      for (let c = 0; c < 3; c++) {
+        const v = (d[i + c] * k + DISK_FLOOR[c]) * dim;
+        d[i + c] = v < 0 ? 0 : v > 255 ? 255 : v;
       }
     }
     ctx.putImageData(data, 0, 0);

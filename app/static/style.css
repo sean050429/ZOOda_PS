@@ -657,3 +657,10 @@ main {
   background: rgba(63, 214, 214, 0.14);
   color: var(--sheikah);
 }
+
+/* 本地没有 ui_source/ 时，「原版」按钮不可用 */
+.seg-btn:disabled,
+.seg-btn.is-off {
+  opacity: 0.35;
+  cursor: not-allowed;
+}

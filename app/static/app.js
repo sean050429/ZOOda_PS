@@ -309,11 +309,29 @@ function fillContext(ctx) {
 
 let layoutReady = false;
 
+/* 「原版」模式要读 ui_source/ 里的游戏抠图，而那个目录不进版本库。
+ * 刚克隆的仓库里没有，切过去会是一片空白，所以先探一张图决定能不能用。 */
+async function detectOriginalAssets() {
+  const btn = iconMode.querySelector('[data-mode="original"]');
+  if (!btn) return;
+  let ok = false;
+  try {
+    // 必须 no-store：这张图在有 ui_source 时加载过，浏览器会拿缓存的 200
+    // 回答，探测就永远认为素材还在
+    const r = await fetch('/ui_source/hd_png_x8/heart_full.png', { cache: 'no-store' });
+    ok = r.ok;
+  } catch { ok = false; }
+  btn.disabled = !ok;
+  btn.title = ok ? '' : '需要本地有 ui_source/ 目录（游戏抠图，不进版本库）';
+  btn.classList.toggle('is-off', !ok);
+}
+
 async function initHud() {
   if (layoutReady) return true;
   try {
     await loadLayout();
     layoutReady = true;
+    detectOriginalAssets();
     hudStatus.className = 'ctx-note';
     hudStatus.textContent = '';
     return true;
@@ -321,7 +339,7 @@ async function initHud() {
     hudPanel.hidden = true;
   bannerPanel.hidden = true;
     hudStatus.className = 'ctx-note is-error';
-    hudStatus.textContent = '读不到 ui_source/ui_layout.json，HUD 布局不可用。';
+    hudStatus.textContent = '读不到 ui_layout.json，HUD 布局不可用。';
     return false;
   }
 }
