@@ -6,6 +6,15 @@
 
 from __future__ import annotations
 
+import sys
+
+# 代码里用了 X | None 这种 3.10 才有的联合类型语法。低版本会在 import
+# 阶段抛 SyntaxError，报错指向某个类型标注，看不出是版本问题，所以先明说。
+if sys.version_info < (3, 10):
+    raise SystemExit(
+        f"需要 Python 3.10 以上，当前是 {sys.version_info.major}.{sys.version_info.minor}"
+    )
+
 import io
 from datetime import datetime
 import shutil
