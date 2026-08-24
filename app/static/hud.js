@@ -11,7 +11,7 @@
 const CANVAS_W = 1920;
 const CANVAS_H = 1080;
 
-import { ICONS } from '/icons.js';
+import { ICONS, HUD_ACCENT } from '/icons.js';
 
 const overlay = document.getElementById('overlay');
 const stage = document.getElementById('stage');
@@ -130,7 +130,7 @@ export function renderHud() {
       const act = ACTIVE_DISKS[el.id];
       if (act) {
         const p2 = place(act.box, el.anchor, scale);
-        root.appendChild(blackenedDisk(act.src, p2, el.name || el.id, act.glow, act.dim));
+        root.appendChild(blackenedDisk(act.src, p2, el.name || el.id, act.glow, act.dim, act.tint));
         continue;
       }
       root.appendChild(blackenedDisk(`/ui_source/${src}`, pos, el.name || el.id));
@@ -280,9 +280,10 @@ const ACTIVE_DISKS = {
     src: '/ui_source/active/sensor_active_x8.png',
     glow: '/ui_source/active/sensor_active_glow_add.png',
     box: { x: 1507, y: 772, w: 82, h: 83 },
-    // 激活素材自带亮青外环和纹样，压黑之后整体仍比另外两个盘抢眼，
-    // 统一乘一个系数压下来。压的是压黑之后的结果，所以底色不受影响。
-    dim: 0.6,
+    // 素材自带的青比天气文字更亮更偏绿（#8AFFFF 一带），压黑后重新按亮度
+    // 染成统一色。染色本身会把峰值归一化，原来那个 dim: 0.6 会被一起
+    // 归掉，所以不再需要——亮度现在由 HUD_ACCENT 自己决定。
+    tint: HUD_ACCENT,
   },
   disk_sound: {
     src: '/ui_source/active/sound_active_x8.png',
@@ -370,7 +371,7 @@ function applyGlow(ctx, glowImg, px) {
   ctx.restore();
 }
 
-function blackenedDisk(src, pos, alt, glowSrc, dim = 1) {
+function blackenedDisk(src, pos, alt, glowSrc, dim = 1, tint = null) {
   const cv = document.createElement('canvas');
   cv.className = 'hud-item';
   cv.title = alt;
@@ -388,6 +389,7 @@ function blackenedDisk(src, pos, alt, glowSrc, dim = 1) {
     // 压黑已经做完了管不住它，结果这个盘明显比另外两个亮。
     const finish = () => {
       blackenInPlace(ctx, px, dim);
+      if (tint) tintInPlace(ctx, px, tint);
     };
     if (!glowSrc) { finish(); return; }
     const g = new Image();
@@ -424,13 +426,52 @@ function blackenInPlace(ctx, px, dim = 1) {
     ctx.putImageData(data, 0, 0);
 }
 
+function hexToRgb(hex) {
+  const n = parseInt(hex.slice(1), 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+
+/** 就地把压黑后的画布染成单一色相：按亮度在「盘底」和目标色之间取值。
+ *
+ * 不能用 globalCompositeOperation 直接乘——素材的青已经把红通道压到接近 0，
+ * 再乘任何颜色都出不来目标色的红分量，结果还是原来那个偏绿的青。
+ * 按亮度重建三个通道才能真正换色，同时保住纹样形状和辉光的衰减。
+ *
+ * 峰值按图内实际最大亮度归一化，这样最亮处正好落在目标色上，
+ * 不受素材本身亮到什么程度影响。
+ */
+function tintInPlace(ctx, px, hex) {
+  const rgb = hexToRgb(hex);
+  const data = ctx.getImageData(0, 0, px, px);
+  const d = data.data;
+
+  let peak = 0;
+  for (let i = 0; i < d.length; i += 4) {
+    if (d[i + 3] === 0) continue;
+    const lum = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+    if (lum > peak) peak = lum;
+  }
+  if (peak <= 0) return;
+
+  for (let i = 0; i < d.length; i += 4) {
+    if (d[i + 3] === 0) continue;
+    const lum = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+    const k = Math.min(1, lum / peak);
+    for (let c = 0; c < 3; c++) {
+      // 暗处收敛到盘底色，亮处收敛到目标色
+      d[i + c] = rgb[c] * k + DISK_FLOOR[c] * (1 - k);
+    }
+  }
+  ctx.putImageData(data, 0, 0);
+}
+
 /* ---------------- 温度表盘 ---------------- */
 
 // 盘面直接用游戏原件（外圈 12 段刻度、配色、外框全部保留），
 // 只重画会动的部分：盖掉原件里那根固定朝上的指针，换成按温度旋转的，
 // 并在下方写出读数。两个颜色都是从原件里采样出来的。
 const DIAL_INNER = 'rgb(10,12,14)';  // 与压黑后的盘底一致，用来遮住原指针
-const DIAL_NEEDLE = '#88F0F8';  // 原件的指针与文字色
+const DIAL_NEEDLE = HUD_ACCENT;  // 原件采样是 #88F0F8，改用统一色
 
 // 实测范围：南极 -50.9°C、撒哈拉 36.3°C。映射到 ±110 度指针摆幅。
 const DIAL_MIN = -20;
@@ -617,7 +658,7 @@ function loadImage(src) {
 }
 
 /** 把一张圆盘按黑底规则处理好，返回可直接 drawImage 的画布。 */
-function blackenDiskToCanvas(img, px, glowImg, dim = 1) {
+function blackenDiskToCanvas(img, px, glowImg, dim = 1, tint = null) {
   const cv = document.createElement('canvas');
   cv.width = px;
   cv.height = px;
@@ -625,6 +666,7 @@ function blackenDiskToCanvas(img, px, glowImg, dim = 1) {
   ctx.drawImage(img, 0, 0, px, px);
   if (glowImg) applyGlow(ctx, glowImg, px);   // 先叠辉光，再压黑
   blackenInPlace(ctx, px, dim);
+  if (tint) tintInPlace(ctx, px, tint);
   return cv;
 }
 
@@ -730,7 +772,7 @@ export async function drawHudOnCanvas(ctx, width, height) {
       const px = Math.max(24, Math.round(p2.w));
       const base = await loadImage(act.src);
       const glow = act.glow ? await loadImage(act.glow) : null;
-      ctx.drawImage(blackenDiskToCanvas(base, px, glow, act.dim), q.x, q.y, p2.w, p2.h);
+      ctx.drawImage(blackenDiskToCanvas(base, px, glow, act.dim, act.tint), q.x, q.y, p2.w, p2.h);
       continue;
     }
 
@@ -869,7 +911,7 @@ function drawWeatherOn(ctx, scale, toXY) {
 
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillStyle = '#5FC8F0';
+  ctx.fillStyle = HUD_ACCENT;
   withShadow(ctx, 2 * scale * 4, 0.6, scale * 4, () => {
     ctx.fillText(hudState.weatherText, x + w / 2, y + h / 2);
   });

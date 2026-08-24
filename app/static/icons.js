@@ -15,8 +15,14 @@ const YELLOW = '#F0F030';       // 耐力环
 const DPAD_FACE = '#E0F0D0';
 const DPAD_MARK = '#7F9BAC';
 const DISK_BASE = 'rgb(10,12,14)';
-const SENSOR_GLYPH = '#7C93A6';
-const SOUND_WAVE = '#9A7BC4';
+
+// 天气胶囊的文字色。感应器和温度盘此前各用各的采样色（#7C93A6、#88F0F8），
+// 和天气文字摆在一起三种蓝对不上，统一收敛到这一个。
+// 声音盘的紫是它自己的语义色，不并进来。
+export const HUD_ACCENT = '#5FC8F0';
+
+const SENSOR_GLYPH = HUD_ACCENT;
+const SOUND_WAVE = '#9A7BC4';   // 声音波形，保持原本的紫
 
 /** 心形：两个圆弧顶 + 下方尖角。 */
 function heartPath(ctx, w, h) {
