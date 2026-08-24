@@ -400,16 +400,25 @@ function blackenedDisk(src, pos, alt, glowSrc, dim = 1) {
 }
 
 /** 就地把画布压成黑底：减去主色再放大反差。 */
+/* 按亮度整体缩放，不能逐通道减主色 —— 那样会扭曲色相。
+ * 盘底 #284868 的蓝分量比绿多，逐通道减掉后蓝被削得更狠，
+ * 青色的感应器纹样就偏绿了（#8AFFFF 变成 #87F8CF）。
+ * 整体缩放时三个通道等比例变化，色相不动。 */
 function blackenInPlace(ctx, px, dim = 1) {
     const data = ctx.getImageData(0, 0, px, px);
     const d = data.data;
     const bg = dominantColor(d);
+    const lumBg = 0.299 * bg[0] + 0.587 * bg[1] + 0.114 * bg[2];
+    const span = Math.max(1, 255 - lumBg);
 
     for (let i = 0; i < d.length; i += 4) {
       if (d[i + 3] === 0) continue;
-      for (let k = 0; k < 3; k++) {
-        const v = ((d[i + k] - bg[k]) * DISK_GAIN + DISK_FLOOR[k]) * dim;
-        d[i + k] = v < 0 ? 0 : v > 255 ? 255 : v;
+      const lum = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+      // 亮度落在主色上的像素归零，越亮保留越多
+      const k = Math.max(0, (lum - lumBg) / span) * DISK_GAIN;
+      for (let c = 0; c < 3; c++) {
+        const v = (d[i + c] * k + DISK_FLOOR[c]) * dim;
+        d[i + c] = v < 0 ? 0 : v > 255 ? 255 : v;
       }
     }
     ctx.putImageData(data, 0, 0);
