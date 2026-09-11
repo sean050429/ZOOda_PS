@@ -4,7 +4,7 @@
 
 程序跑在本机，界面用浏览器打开。**不需要任何 API key。**
 
-![状态](https://img.shields.io/badge/状态-开发中-orange) ![Python](https://img.shields.io/badge/Python-3.14-blue) ![API%20Key](https://img.shields.io/badge/API%20Key-零-brightgreen)
+![状态](https://img.shields.io/badge/状态-开发中-orange) ![Python](https://img.shields.io/badge/Python-3.10%2B-blue) ![API%20Key](https://img.shields.io/badge/API%20Key-零-brightgreen)
 
 ---
 
@@ -121,8 +121,7 @@ netstat -ano | findstr :8000
 
 | # | 功能 | 说明 |
 |---|---|---|
-| 9 | **天气图标** | 天气目前是文字。原作那条胶囊是三格预报图标，要画成 SVG。`weather.py` 已经把 WMO 代码归类成 clear / partly / cloudy / fog / drizzle / rain / snow / thunder 八种，直接对应图标即可 |
-
+| 10 | **天气图标** | 天气目前是文字。原作那条胶囊是三格预报图标，要画成 SVG。`weather.py` 已经把 WMO 代码归类成 clear / partly / cloudy / fog / drizzle / rain / snow / thunder 八种，直接对应图标即可 |
 | 11 | **其他游戏模版** | 文档里的拓展功能，架构上预留 |
 
 ### 素材来源
@@ -167,18 +166,20 @@ app/
     index.html
     style.css
     app.js         主逻辑：上传、地点、各面板控制
-    hud.js         按 ui_layout.json 摆放整套 HUD
+    hud.js         按 ui_layout.json 摆放整套 HUD，温度盘和指北条的自绘也在这里
+    icons.js       其余 HUD 元件的自绘实现（心心、装备槽、希卡圆盘等）
     minimap.js     照片上的小地图部件（底图 img + 箭头 canvas 两层）
     exporter.js    一键导出：原图分辨率合成 PNG
-ui_source/         HUD 元件与 ui_layout.json（gitignore，含游戏素材）
+    ui_layout.json 各元件在 1920x1080 参考图上的位置与锚点，随程序发布
     fonts/         Noto Serif SC 的 woff2 分片（gitignore，由脚本抓取）
+ui_source/         游戏抠图，只在「原版」对照时用（gitignore，不进仓库）
 scripts/
   fetch_font.py    抓取地名标题用的字体
 uploads/           上传的照片（gitignore）
 cache/             瓦片与地名缓存（gitignore）
 ```
 
-小地图刻意拆成两层：**底图**只跟坐标有关，要走网络、拼瓦片、做调色，慢；**箭头**只跟朝向有关，放在前端 canvas 上同步画。所以拖朝向和箭头大小滑块是即时的，一次请求都不发。服务端保留了同一套箭头绘制逻辑，供第 9 步导出时按原图分辨率重画。
+小地图刻意拆成两层：**底图**只跟坐标有关，要走网络、拼瓦片、做调色，慢；**箭头**只跟朝向有关，放在前端 canvas 上同步画。所以拖朝向和箭头大小滑块是即时的，一次请求都不发。导出时底图按导出尺寸重新向服务端要一张，箭头仍在前端 canvas 上按原图分辨率重画，和预览共用同一组比例常量。
 
 ### API
 
@@ -198,10 +199,9 @@ cache/             瓦片与地名缓存（gitignore）
 - **Overpass 不稳定。** 免费公共服务，429 和超时很常见。失败时会明确返回 `ok: false` 而非假装「这里没有地标」，前端退回到行政区名。同一坐标成功查询一次后写入缓存。
 - **日本的中文地名不全。** 地标级别没问题（東京鐵塔、清水寺），但街区级别 OSM 缺 `name:zh`，会返回罗马字如 `Shibakōen 4`，需要手动改。
 - **地名自动解析不保证准确。** 「最有名」不是一个几何属性，任何自动方法都有失手的时候。地名字段始终可以手动编辑。
-- **HUD 里还有 4 个游戏抠图。** 三个希卡圆盘和指北条目前直接用游戏截图裁出来的 PNG，仅供本地对照排版；仓库不包含这些文件（`ui_source/` 已 gitignore）。成品发布前必须重绘，见待完成第 8 项。
 - **只在 macOS 上实机验证过。** 干净克隆下起服务、上传照片、生成 HUD、导出成品的完整流程实测通过。Windows 和 Linux 没有实机跑过 —— 已核对的部分：全部依赖都有对应平台的轮子，代码无平台相关写法，前端 113 条静态引用的大小写与真实文件名逐条一致（Linux 区分大小写）。
 - **字体在非 macOS 上会退化。** 没跑 `scripts/fetch_font.py` 时，标题会退回系统衬线字体；macOS 有 Songti SC，其他系统会退到各自的默认中文衬线，字形不同但不报错。
-- **天气是文字占位。** 右下角的天气条现在只是可手改的文本，还没接真实数据。
+- **天气只有文字，没有图标。** 天气和温度是按拍摄时刻从 Open-Meteo 查到的实况，但原作胶囊里那三格预报图标还没画，目前只写一个天气词，见待完成第 10 项。
 
 ---
 
